@@ -20,6 +20,8 @@ const (
 	reportKeyEnvironment   = "environment"
 	reportKeyExecutionTime = "time"
 	reportKeyStatus        = "status"
+	reportKeyMetrics       = "metrics"
+	reportKeyMetricTimes   = reportKeyMetrics + ".time"
 )
 
 var (
@@ -40,6 +42,12 @@ var (
 
 	// ErrMissingStatus is returned when the status is missing from the report
 	ErrMissingStatus = errors.New("missing status in report")
+
+	// ErrMissingRuntime is returned when the runtime is missing from the report
+	ErrMissingRuntime = errors.New("missing runtime in report")
+
+	// ErrInvalidRuntime is returned when the runtime is invalid
+	ErrInvalidRuntime = errors.New("invalid runtime in report")
 )
 
 func parsePuppetReport(content []byte) (*models.Report, error) {
@@ -72,6 +80,10 @@ func parsePuppetReport(content []byte) (*models.Report, error) {
 
 	if err := parseStatus(report, vip); err != nil {
 		return nil, fmt.Errorf("parsing status: %w", err)
+	}
+
+	if err := parseRuntime(report, vip); err != nil {
+		return nil, fmt.Errorf("parsing runtime: %w", err)
 	}
 
 	return report, nil
@@ -162,6 +174,36 @@ func parseStatus(r *models.Report, vip *viper.Viper) error {
 	}
 
 	r.State = status
+
+	return nil
+}
+
+func parseRuntime(r *models.Report, vip *viper.Viper) error {
+	times := vip.GetStringSlice(reportKeyMetricTimes)
+	if len(times) == 0 {
+		return ErrMissingRuntime
+	}
+
+	reg, _ := regexp.Compile("Total ([0-9.]+)")
+
+	runtime := ""
+	for _, t := range times {
+		match := reg.FindStringSubmatch(t)
+		if len(match) == 2 {
+			runtime = match[1]
+		}
+	}
+
+	if runtime == "" {
+		return ErrInvalidRuntime
+	}
+
+	dur, err := time.ParseDuration(runtime + "s")
+	if err != nil {
+		return fmt.Errorf("failed to parse runtime '%s' as time.Duration", runtime)
+	}
+
+	r.Runtime = int(dur.Seconds())
 
 	return nil
 }
