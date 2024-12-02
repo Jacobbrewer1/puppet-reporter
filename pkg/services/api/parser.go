@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
+	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -12,16 +15,6 @@ import (
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
 	"github.com/spf13/viper"
-)
-
-const (
-	reportKeyHost          = "host"
-	reportKeyPuppetVersion = "puppet_version"
-	reportKeyEnvironment   = "environment"
-	reportKeyExecutionTime = "time"
-	reportKeyStatus        = "status"
-	reportKeyMetrics       = "metrics"
-	reportKeyMetricTimes   = reportKeyMetrics + ".time"
 )
 
 var (
@@ -50,7 +43,14 @@ var (
 	ErrInvalidRuntime = errors.New("invalid runtime in report")
 )
 
+type CompleteReport struct {
+	Report    *models.Report
+	Resources []*models.Resource
+	Logs      []string
+}
+
 func parsePuppetReport(content []byte) (*models.Report, error) {
+	complete := new(CompleteReport)
 	report := new(models.Report)
 
 	report.Hash = utils.Sha256(content)
@@ -86,7 +86,180 @@ func parsePuppetReport(content []byte) (*models.Report, error) {
 		return nil, fmt.Errorf("parsing runtime: %w", err)
 	}
 
+	if err := parseResourceStates(report, vip); err != nil {
+		return nil, fmt.Errorf("parsing resources: %w", err)
+	}
+
+	complete.Report = report
+
+	if logs := parseLogs(vip); len(logs) > 0 {
+		complete.Logs = logs
+	}
+
+	resources, err := parseResources(vip)
+	if err != nil {
+		return nil, fmt.Errorf("parsing resources: %w", err)
+	}
+
+	sort.Slice(resources, func(i, j int) bool {
+		if resources[i].File != resources[j].File {
+			return resources[i].File < resources[j].File
+		}
+
+		if resources[i].Line != resources[j].Line {
+			return resources[i].Line < resources[j].Line
+		}
+
+		if resources[i].Type != resources[j].Type {
+			return resources[i].Type < resources[j].Type
+		}
+
+		if resources[i].Name != resources[j].Name {
+			return resources[i].Name < resources[j].Name
+		}
+
+		// Resources are equal.
+		return false
+	})
+
+	complete.Resources = resources
+
 	return report, nil
+}
+
+func parseResources(vip *viper.Viper) ([]*models.Resource, error) {
+	gotResources := vip.GetStringMap(reportKeyResources)
+	resources := make([]*models.Resource, 0)
+
+	for _, r := range gotResources {
+		m := make(map[string]string)
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Map {
+			for _, key := range v.MapKeys() {
+				st := key.MapIndex(key)
+
+				k, val := key.Interface(), st.Interface()
+				m[k.(string)] = fmt.Sprintf("%v", val)
+			}
+		}
+
+		skip, err := strconv.ParseBool(m[stateSkipped])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse skipped '%s' as bool", m[stateSkipped])
+		}
+		change, err := strconv.ParseBool(m[stateChanged])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse changed '%s' as bool", m[stateChanged])
+		}
+		fail, err := strconv.ParseBool(m[stateFailed])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse failed '%s' as bool", m[stateFailed])
+		}
+
+		res := parseResource(m)
+		switch {
+		case skip:
+			res.Status = models.ResourceStatusSkipped
+		case change:
+			res.Status = models.ResourceStatusChanged
+		case fail:
+			res.Status = models.ResourceStatusFailed
+		default:
+			res.Status = models.ResourceStatusUnchanged
+		}
+
+		resources = append(resources, res)
+	}
+
+	return resources, nil
+}
+
+func parseResource(m map[string]string) *models.Resource {
+	res := &models.Resource{
+		Name: m[resourceKeyTitle],
+		Type: m[resourceKeyResourceType],
+		File: m[resourceKeyFile],
+	}
+
+	if line, err := strconv.Atoi(m[resourceKeyLine]); err == nil {
+		res.Line = line
+	} else {
+		slog.Warn(fmt.Sprintf("failed to parse line '%s' as int", m[resourceKeyLine]))
+		res.Line = unknownLineNum
+	}
+
+	return res
+}
+
+func parseLogs(vip *viper.Viper) []string {
+	return vip.GetStringSlice(reportKeyLogs)
+}
+
+func parseResourceStates(r *models.Report, vip *viper.Viper) error {
+	gotResources := vip.GetStringSlice(reportKeyResourceStatus)
+
+	totalReg, _ := regexp.Compile("Total ([0-9]+)")
+	failedReg, _ := regexp.Compile("Failed ([0-9]+)")
+	skippedReg, _ := regexp.Compile("Skipped ([0-9]+)")
+	changedReg, _ := regexp.Compile("Changed ([0-9]+)")
+
+	totalStr := ""
+	failedStr := ""
+	skippedStr := ""
+	changedStr := ""
+
+	for _, r := range gotResources {
+		mt := totalReg.FindStringSubmatch(r)
+		if len(mt) == 2 {
+			totalStr = mt[1]
+		}
+
+		mf := failedReg.FindStringSubmatch(r)
+		if len(mf) == 2 {
+			failedStr = mf[1]
+		}
+
+		ms := skippedReg.FindStringSubmatch(r)
+		if len(ms) == 2 {
+			skippedStr = ms[1]
+		}
+
+		mc := changedReg.FindStringSubmatch(r)
+		if len(mc) == 2 {
+			changedStr = mc[1]
+		}
+	}
+
+	if totalStr == "" || failedStr == "" || skippedStr == "" || changedStr == "" {
+		return errors.New("failed to parse resource metrics")
+	}
+
+	total, err := strconv.Atoi(totalStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse total '%s' as int", totalStr)
+	}
+
+	failed, err := strconv.Atoi(failedStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse failed '%s' as int", failedStr)
+	}
+
+	skipped, err := strconv.Atoi(skippedStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse skipped '%s' as int", skippedStr)
+	}
+
+	changed, err := strconv.Atoi(changedStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse changed '%s' as int", changedStr)
+	}
+
+	r.Total = total
+	r.Failed = failed
+	r.Skipped = skipped
+	r.Changed = changed
+
+	return nil
 }
 
 func parseHost(r *models.Report, vip *viper.Viper) error {
@@ -179,7 +352,7 @@ func parseStatus(r *models.Report, vip *viper.Viper) error {
 }
 
 func parseRuntime(r *models.Report, vip *viper.Viper) error {
-	times := vip.GetStringSlice(reportKeyMetricTimes)
+	times := vip.GetStringSlice(reportKeyRuntimes)
 	if len(times) == 0 {
 		return ErrMissingRuntime
 	}

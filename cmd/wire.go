@@ -5,10 +5,11 @@ package main
 
 import (
 	"github.com/google/wire"
+	"github.com/jacobbrewer1/puppet-reporter/cmd"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/services/api"
 )
 
-func InitializeApp() (App, error) {
+func InitializeApp() (main.App, error) {
 	wire.Build(
 		getRootContext,
 		getConfig,
@@ -16,7 +17,7 @@ func InitializeApp() (App, error) {
 		api.NewService,
 		getServerOptions,
 		getRouter,
-		newApp,
+		main.newApp,
 	)
-	return new(app), nil
+	return new(main.app), nil
 }

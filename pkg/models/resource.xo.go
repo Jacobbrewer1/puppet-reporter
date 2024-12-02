@@ -6,18 +6,20 @@ package models
 import (
 	"fmt"
 
+	"github.com/jacobbrewer1/goschema/usql"
 	"github.com/jacobbrewer1/patcher/inserter"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Resource represents a row from 'resource'.
 type Resource struct {
-	Id       int    `db:"id,pk,autoinc"`
-	ReportId int    `db:"report_id"`
-	Name     string `db:"name"`
-	Type     string `db:"type"`
-	File     string `db:"file"`
-	Line     int    `db:"line"`
+	Id       int       `db:"id,pk,autoinc"`
+	ReportId int       `db:"report_id"`
+	Status   usql.Enum `db:"status"`
+	Name     string    `db:"name"`
+	Type     string    `db:"type"`
+	File     string    `db:"file"`
+	Line     int       `db:"line"`
 }
 
 // Insert inserts the Resource to the database.
@@ -26,13 +28,13 @@ func (m *Resource) Insert(db DB) error {
 	defer t.ObserveDuration()
 
 	const sqlstr = "INSERT INTO resource (" +
-		"`report_id`, `name`, `type`, `file`, `line`" +
+		"`report_id`, `status`, `name`, `type`, `file`, `line`" +
 		") VALUES (" +
-		"?, ?, ?, ?, ?" +
+		"?, ?, ?, ?, ?, ?" +
 		")"
 
-	DBLog(sqlstr, m.ReportId, m.Name, m.Type, m.File, m.Line)
-	res, err := db.Exec(sqlstr, m.ReportId, m.Name, m.Type, m.File, m.Line)
+	DBLog(sqlstr, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
+	res, err := db.Exec(sqlstr, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
 	if err != nil {
 		return err
 	}
@@ -93,10 +95,18 @@ func (m *Resource) Delete(db DB) error {
 	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_Resource"))
 	defer t.ObserveDuration()
 
-	const sqlstr = "DELETE FROM resource WHERE `id` = ? AND `report_id` = ? AND `name` = ? AND `type` = ? AND `file` = ? AND `line` = ?"
+	const sqlstr = "DELETE FROM resource WHERE `id` = ? AND `report_id` = ? AND `status` = ? AND `name` = ? AND `type` = ? AND `file` = ? AND `line` = ?"
 
-	DBLog(sqlstr, m.Id, m.ReportId, m.Name, m.Type, m.File, m.Line)
-	_, err := db.Exec(sqlstr, m.Id, m.ReportId, m.Name, m.Type, m.File, m.Line)
+	DBLog(sqlstr, m.Id, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
+	_, err := db.Exec(sqlstr, m.Id, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
 
 	return err
 }
+
+// Valid values for the 'Status' enum column
+var (
+	ResourceStatusSkipped   = usql.NewEnum("skipped")
+	ResourceStatusChanged   = usql.NewEnum("changed")
+	ResourceStatusFailed    = usql.NewEnum("failed")
+	ResourceStatusUnchanged = usql.NewEnum("unchanged")
+)

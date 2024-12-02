@@ -9,6 +9,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	main2 "github.com/jacobbrewer1/puppet-reporter/cmd"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/vaulty"
 )
 
@@ -58,14 +60,14 @@ func (a *app) Start() {
 
 	go func() {
 		if err := svr.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Error starting server", slog.String(loggingKeyError, err.Error()))
+			slog.Error("Error starting server", slog.String(logging.KeyError, err.Error()))
 		}
 	}()
 
 	<-a.ctx.Done()
 
 	if err := svr.Shutdown(a.ctx); err != nil {
-		slog.Error("Error shutting down server", slog.String(loggingKeyError, err.Error()))
+		slog.Error("Error shutting down server", slog.String(logging.KeyError, err.Error()))
 		return
 	}
 
@@ -74,7 +76,7 @@ func (a *app) Start() {
 
 func init() {
 	flag.Parse()
-	initializeLogger()
+	main2.initializeLogger()
 }
 
 func main() {

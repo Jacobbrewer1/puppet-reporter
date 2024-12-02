@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 )
 
 func initializeLogger() {
@@ -14,7 +16,7 @@ func initializeLogger() {
 	}))
 
 	logger.With(
-		loggingKeyAppName, appName,
+		logging.KeyAppName, appName,
 	)
 
 	slog.SetDefault(logger)

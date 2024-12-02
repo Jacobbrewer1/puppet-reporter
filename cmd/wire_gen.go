@@ -7,12 +7,13 @@
 package main
 
 import (
+	"github.com/jacobbrewer1/puppet-reporter/cmd"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/services/api"
 )
 
 // Injectors from wire.go:
 
-func InitializeApp() (App, error) {
+func InitializeApp() (main.App, error) {
 	context := getRootContext()
 	serverInterface := api.NewService()
 	v := getServerOptions()
@@ -28,6 +29,6 @@ func InitializeApp() (App, error) {
 	if err != nil {
 		return nil, err
 	}
-	mainApp := newApp(context, router, client)
+	mainApp := main.newApp(context, router, client)
 	return mainApp, nil
 }

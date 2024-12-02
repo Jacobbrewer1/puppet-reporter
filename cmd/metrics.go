@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/uhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -57,7 +58,7 @@ func metricsMiddleware(w http.ResponseWriter, r *http.Request) {
 		path, err = route.GetPathTemplate()
 		if err != nil {
 			// An error here is only returned if the route does not define a path.
-			slog.Error("Error getting path template", slog.String(loggingKeyError, err.Error()))
+			slog.Error("Error getting path template", slog.String(logging.KeyError, err.Error()))
 			path = r.URL.Path // If the route does not define a path, use the URL path.
 		}
 	} else {
