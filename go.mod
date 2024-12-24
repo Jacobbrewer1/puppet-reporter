@@ -11,7 +11,7 @@ require (
 	github.com/jacobbrewer1/goschema v0.0.12
 	github.com/jacobbrewer1/patcher v0.1.12
 	github.com/jacobbrewer1/uhttp v0.0.4
-	github.com/jacobbrewer1/vaulty v0.1.5
+	github.com/jacobbrewer1/vaulty v0.1.6
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/prometheus/client_golang v1.20.5
