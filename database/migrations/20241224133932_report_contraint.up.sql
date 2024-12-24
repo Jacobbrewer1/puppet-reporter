@@ -1,0 +1,1 @@
+alter table report add constraint report_hash_unique unique (hash);

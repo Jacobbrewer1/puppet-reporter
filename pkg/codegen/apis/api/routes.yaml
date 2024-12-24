@@ -1,0 +1,76 @@
+openapi: 3.0.0
+info:
+  version: latest
+  title: Puppet Reporter
+  description: This is the API documentation for the Puppet Reporter application
+
+tags:
+  - name: reports
+    description: Operations related to reports
+
+paths:
+  /upload:
+    post:
+      tags:
+        - reports
+      summary: Upload a report
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Report uploaded successfully
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invalid file format
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: An error occurred while processing the report
+
+components:
+  schemas:
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: report.json
+        size:
+          type: integer
+          example: 1024
+        created_at:
+          type: string
+          format: date-time
+          example: 2021-01-01T00:00:00Z
