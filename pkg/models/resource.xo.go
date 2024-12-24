@@ -13,6 +13,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	// ResourceTableName is the name of the table for the Resource model.
+	ResourceTableName = "resource"
+)
+
 // Resource represents a row from 'resource'.
 type Resource struct {
 	Id       int       `db:"id,pk,autoinc"`
@@ -26,7 +31,7 @@ type Resource struct {
 
 // Insert inserts the Resource to the database.
 func (m *Resource) Insert(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_Resource"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_" + ResourceTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "INSERT INTO resource (" +
@@ -55,16 +60,16 @@ func InsertManyResources(db DB, ms ...*Resource) error {
 		return nil
 	}
 
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_many_Resource"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_many_" + ResourceTableName))
 	defer t.ObserveDuration()
 
 	vals := make([]any, 0, len(ms))
 	for _, m := range ms {
 		// Dereference the pointer to get the struct value.
-		vals = append(vals, []any{*m})
+		vals = append(vals, any(*m))
 	}
 
-	sqlstr, args, err := inserter.NewBatch(vals, inserter.WithTable("resource")).GenerateSQL()
+	sqlstr, args, err := inserter.NewBatch(vals, inserter.WithTable(ResourceTableName)).GenerateSQL()
 	if err != nil {
 		return fmt.Errorf("failed to create batch insert: %w", err)
 	}
@@ -94,7 +99,7 @@ func (m *Resource) IsPrimaryKeySet() bool {
 
 // Update updates the Resource in the database.
 func (m *Resource) Update(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_Resource"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_" + ResourceTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "UPDATE resource " +
@@ -122,7 +127,7 @@ func (m *Resource) Patch(db DB, newT *Resource) error {
 		return errors.New("new resource is nil")
 	}
 
-	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable("resource"))
+	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(ResourceTableName))
 	if err != nil {
 		return fmt.Errorf("new diff sql patch: %w", err)
 	}
@@ -149,7 +154,7 @@ func (m *Resource) Patch(db DB, newT *Resource) error {
 // InsertWithUpdate inserts the Resource to the database, and tries to update
 // on unique constraint violations.
 func (m *Resource) InsertWithUpdate(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_Resource"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_" + ResourceTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "INSERT INTO resource (" +
@@ -193,7 +198,7 @@ func (m *Resource) SaveOrUpdate(db DB) error {
 
 // Delete deletes the Resource from the database.
 func (m *Resource) Delete(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_Resource"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_" + ResourceTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "DELETE FROM resource WHERE `id` = ?"

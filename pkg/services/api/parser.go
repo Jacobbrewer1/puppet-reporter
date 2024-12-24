@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,9 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
-	"github.com/spf13/viper"
+	"github.com/smallfish/simpleyaml"
 )
 
 var (
@@ -46,57 +46,55 @@ var (
 type CompleteReport struct {
 	Report    *models.Report
 	Resources []*models.Resource
-	Logs      []string
+	Logs      []*models.LogMessage
 }
 
-func parsePuppetReport(content []byte) (*models.Report, error) {
+func parsePuppetReport(content []byte) (*CompleteReport, error) {
 	complete := new(CompleteReport)
 	report := new(models.Report)
 
 	report.Hash = utils.Sha256(content)
 
-	vip := viper.New()
-	vip.SetConfigType("yaml")
-	err := vip.ReadConfig(bytes.NewBuffer(content))
+	yaml, err := simpleyaml.NewYaml(content)
 	if err != nil {
-		return nil, fmt.Errorf("error reading config: %w", err)
+		return nil, errors.New("failed to parse YAML")
 	}
 
-	if err := parseHost(report, vip); err != nil {
+	if err := parseHost(report, yaml); err != nil {
 		return nil, fmt.Errorf("parsing host: %w", err)
 	}
 
-	if err := parsePuppetVersion(report, vip); err != nil {
+	if err := parsePuppetVersion(report, yaml); err != nil {
 		return nil, fmt.Errorf("parsing puppet version: %w", err)
 	}
 
-	if err := parseEnvironment(report, vip); err != nil {
+	if err := parseEnvironment(report, yaml); err != nil {
 		return nil, fmt.Errorf("parsing environment: %w", err)
 	}
 
-	if err := parseExecutionTime(report, vip); err != nil {
+	if err := parseExecutionTime(report, yaml); err != nil {
 		return nil, fmt.Errorf("parsing execution time: %w", err)
 	}
 
-	if err := parseStatus(report, vip); err != nil {
+	if err := parseStatus(report, yaml); err != nil {
 		return nil, fmt.Errorf("parsing status: %w", err)
 	}
 
-	if err := parseRuntime(report, vip); err != nil {
+	if err := parseRuntime(report, yaml); err != nil {
 		return nil, fmt.Errorf("parsing runtime: %w", err)
 	}
 
-	if err := parseResourceStates(report, vip); err != nil {
+	if err := parseResourceStates(report, yaml); err != nil {
 		return nil, fmt.Errorf("parsing resources: %w", err)
 	}
 
 	complete.Report = report
 
-	if logs := parseLogs(vip); len(logs) > 0 {
+	if logs := parseLogs(yaml); len(logs) > 0 {
 		complete.Logs = logs
 	}
 
-	resources, err := parseResources(vip)
+	resources, err := parseResources(yaml)
 	if err != nil {
 		return nil, fmt.Errorf("parsing resources: %w", err)
 	}
@@ -124,54 +122,185 @@ func parsePuppetReport(content []byte) (*models.Report, error) {
 
 	complete.Resources = resources
 
-	return report, nil
+	return complete, nil
 }
 
-func parseResources(vip *viper.Viper) ([]*models.Resource, error) {
-	gotResources := vip.GetStringMap(reportKeyResources)
+// parseHost reads the `host` parameter from the YAML and populates
+// the given report-structure with suitable values.
+func parseHost(rep *models.Report, y *simpleyaml.Yaml) error {
+	host, err := y.Get("host").String()
+	if err != nil {
+		return errors.New("failed to get 'host' from YAML")
+	}
+	reg, _ := regexp.Compile("^([a-z0-9._-]+)$")
+	if !reg.MatchString(host) {
+		return errors.New("the submitted 'host' field failed our security check")
+	}
+	rep.Host = host
+	return nil
+}
+
+// parseEnvironment reads the `environment` parameter from the YAML and populates
+// the given report-structure with suitable values.
+func parseEnvironment(rep *models.Report, y *simpleyaml.Yaml) error {
+	envStr, err := y.Get("environment").String()
+	if err != nil {
+		return errors.New("failed to get 'environment' from YAML")
+	}
+	reg, _ := regexp.Compile("^([A-Za-z0-9_]+)$")
+	if !reg.MatchString(envStr) {
+		return errors.New("the submitted 'environment' field failed our security check")
+	}
+	rep.Environment = envStr
+	return nil
+}
+
+// parseExecutionTime reads the `time` parameter from the YAML and populates
+// the given report-structure with suitable values.
+func parseExecutionTime(rep *models.Report, y *simpleyaml.Yaml) error {
+	// Get the time puppet executed
+	at, err := y.Get("time").String()
+	if err != nil {
+		return errors.New("failed to get 'time' from YAML")
+	}
+
+	at = strings.Replace(at, "'", "", -1)
+
+	execTime, err := time.Parse(time.RFC3339Nano, at)
+	if err != nil {
+		return errors.New("failed to parse 'time' from YAML")
+	}
+
+	rep.ExecutedAt = execTime
+
+	return nil
+}
+
+// parseStatus reads the `status` parameter from the YAML and populates
+// the given report-structure with suitable values.
+func parseStatus(rep *models.Report, y *simpleyaml.Yaml) error {
+	s, err := y.Get("status").String()
+	if err != nil {
+		return errors.New("failed to get 'status' from YAML")
+	}
+
+	rep.State = s
+
+	return nil
+}
+
+// parseRuntime reads the `metrics.time.values` parameters from the YAML
+// and populates given report-structure with suitable values.
+func parseRuntime(rep *models.Report, y *simpleyaml.Yaml) error {
+	times, err := y.Get("metrics").Get("time").Get("values").Array()
+	if err != nil {
+		return err
+	}
+
+	r, _ := regexp.Compile("Total ([0-9.]+)")
+
+	runtime := ""
+	for _, value := range times {
+		match := r.FindStringSubmatch(fmt.Sprint(value))
+		if len(match) == 2 {
+			runtime = match[1]
+		}
+	}
+
+	// Parse the runtime as a duration.
+	d, err := time.ParseDuration(runtime + "s")
+	if err != nil {
+		return fmt.Errorf("failed to parse runtime '%s' as duration", runtime)
+	}
+
+	rep.Runtime = int(d.Seconds())
+
+	return nil
+}
+
+// parseResources looks for the counts of resources which have been
+// failed, changed, skipped, etc, and updates the given report-structure
+// with those values.
+func parseResources(y *simpleyaml.Yaml) ([]*models.Resource, error) {
+	rs, err := y.Get("resource_statuses").Map()
+	if err != nil {
+		return nil, errors.New("failed to get 'resource_statuses' from YAML")
+	}
+
 	resources := make([]*models.Resource, 0)
 
-	for _, r := range gotResources {
+	for _, v2 := range rs {
 		m := make(map[string]string)
-		v := reflect.ValueOf(r)
+		v := reflect.ValueOf(v2)
 		if v.Kind() == reflect.Map {
 			for _, key := range v.MapKeys() {
-				st := key.MapIndex(key)
+				strct := v.MapIndex(key)
 
-				k, val := key.Interface(), st.Interface()
-				m[k.(string)] = fmt.Sprintf("%v", val)
+				// Store the key/val in the map.
+				k, v := key.Interface(), strct.Interface()
+				m[k.(string)] = fmt.Sprint(v)
 			}
 		}
 
-		skip, err := strconv.ParseBool(m[stateSkipped])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse skipped '%s' as bool", m[stateSkipped])
-		}
-		change, err := strconv.ParseBool(m[stateChanged])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse changed '%s' as bool", m[stateChanged])
-		}
-		fail, err := strconv.ParseBool(m[stateFailed])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse failed '%s' as bool", m[stateFailed])
-		}
-
 		res := parseResource(m)
-		switch {
-		case skip:
-			res.Status = models.ResourceStatusSkipped
-		case change:
-			res.Status = models.ResourceStatusChanged
-		case fail:
-			res.Status = models.ResourceStatusFailed
-		default:
-			res.Status = models.ResourceStatusUnchanged
+
+		if m["skipped"] == "true" {
+			res.Status = stateSkipped
+			resources = append(resources, res)
 		}
 
-		resources = append(resources, res)
+		if m["changed"] == "true" {
+			res.Status = stateChanged
+			resources = append(resources, res)
+		}
+
+		if m["failed"] == "true" {
+			res.Status = stateFailed
+			resources = append(resources, res)
+		}
+
+		if m["failed"] == "false" &&
+			m["skipped"] == "false" &&
+			m["changed"] == "false" {
+			res.Status = "unchanged"
+			resources = append(resources, res)
+		}
 	}
 
 	return resources, nil
+}
+
+// parseLogs updates the given report with any logged messages.
+func parseLogs(y *simpleyaml.Yaml) []*models.LogMessage {
+	logs, err := y.Get("logs").Array()
+	if err != nil {
+		slog.Error("failed to get 'logs' from YAML", slog.String(logging.KeyError, err.Error()))
+		return nil
+	}
+
+	logged := make([]*models.LogMessage, 0)
+
+	for _, v2 := range logs {
+		// create a map
+		m := make(map[string]string)
+		v := reflect.ValueOf(v2)
+		if v.Kind() == reflect.Map {
+			for _, key := range v.MapKeys() {
+				strct := v.MapIndex(key)
+
+				// Store the key/val in the map.
+				key, val := key.Interface(), strct.Interface()
+				m[key.(string)] = fmt.Sprint(val)
+			}
+		}
+		if len(m["message"]) > 0 {
+			logged = append(logged, &models.LogMessage{
+				Message: m["source"] + " : " + m["message"],
+			})
+		}
+	}
+
+	return logged
 }
 
 func parseResource(m map[string]string) *models.Resource {
@@ -191,12 +320,13 @@ func parseResource(m map[string]string) *models.Resource {
 	return res
 }
 
-func parseLogs(vip *viper.Viper) []string {
-	return vip.GetStringSlice(reportKeyLogs)
-}
-
-func parseResourceStates(r *models.Report, vip *viper.Viper) error {
-	gotResources := vip.GetStringSlice(reportKeyResourceStatus)
+// parseResourceStates updates the given report with details of any resource
+// which was failed, changed, or skipped.
+func parseResourceStates(rep *models.Report, y *simpleyaml.Yaml) error {
+	gotResources, err := y.Get("metrics").Get("resources").Get("values").Array()
+	if err != nil {
+		return fmt.Errorf("failed to get 'metrics.resources.values' from YAML: %w", err)
+	}
 
 	totalReg, _ := regexp.Compile("Total ([0-9]+)")
 	failedReg, _ := regexp.Compile("Failed ([0-9]+)")
@@ -209,22 +339,22 @@ func parseResourceStates(r *models.Report, vip *viper.Viper) error {
 	changedStr := ""
 
 	for _, r := range gotResources {
-		mt := totalReg.FindStringSubmatch(r)
+		mt := totalReg.FindStringSubmatch(fmt.Sprint(r))
 		if len(mt) == 2 {
 			totalStr = mt[1]
 		}
 
-		mf := failedReg.FindStringSubmatch(r)
+		mf := failedReg.FindStringSubmatch(fmt.Sprint(r))
 		if len(mf) == 2 {
 			failedStr = mf[1]
 		}
 
-		ms := skippedReg.FindStringSubmatch(r)
+		ms := skippedReg.FindStringSubmatch(fmt.Sprint(r))
 		if len(ms) == 2 {
 			skippedStr = ms[1]
 		}
 
-		mc := changedReg.FindStringSubmatch(r)
+		mc := changedReg.FindStringSubmatch(fmt.Sprint(r))
 		if len(mc) == 2 {
 			changedStr = mc[1]
 		}
@@ -254,34 +384,18 @@ func parseResourceStates(r *models.Report, vip *viper.Viper) error {
 		return fmt.Errorf("failed to parse changed '%s' as int", changedStr)
 	}
 
-	r.Total = total
-	r.Failed = failed
-	r.Skipped = skipped
-	r.Changed = changed
+	rep.Total = total
+	rep.Failed = failed
+	rep.Skipped = skipped
+	rep.Changed = changed
 
 	return nil
 }
 
-func parseHost(r *models.Report, vip *viper.Viper) error {
-	host := vip.GetString(reportKeyHost)
-	if host == "" {
-		return ErrMissingHost
-	}
-
-	reg, _ := regexp.Compile("^([a-z0-9._-]+)$")
-	if !reg.MatchString(host) {
-		return ErrInvalidHost
-	}
-
-	r.Host = host
-
-	return nil
-}
-
-func parsePuppetVersion(r *models.Report, vip *viper.Viper) error {
-	version := vip.GetString(reportKeyPuppetVersion)
-	if version == "" {
-		return ErrMissingPuppetVersion
+func parsePuppetVersion(rep *models.Report, y *simpleyaml.Yaml) error {
+	version, err := y.Get("puppet_version").String()
+	if err != nil {
+		return errors.New("failed to get 'puppet_version' from YAML")
 	}
 
 	// Strip any quotes that might surround the version.
@@ -299,84 +413,7 @@ func parsePuppetVersion(r *models.Report, vip *viper.Viper) error {
 		return fmt.Errorf("failed to parse puppet_version '%s' as float", version)
 	}
 
-	r.PuppetVersion = v
-
-	return nil
-}
-
-func parseEnvironment(r *models.Report, vip *viper.Viper) error {
-	env := vip.GetString(reportKeyEnvironment)
-	if env == "" {
-		return ErrMissingEnvironment
-	}
-
-	reg, _ := regexp.Compile("^([A-Za-z0-9_]+)$")
-	if !reg.MatchString(env) {
-		return errors.New("the submitted 'environment' field failed our security check")
-	}
-
-	r.Environment = env
-
-	return nil
-}
-
-func parseExecutionTime(r *models.Report, vip *viper.Viper) error {
-	execTimeStr := vip.GetString(reportKeyExecutionTime)
-	if execTimeStr == "" {
-		return ErrMissingExecutionTime
-	}
-
-	// Strip any quotes that might surround the time.
-	execTimeStr = strings.Replace(execTimeStr, "'", "", -1)
-
-	// Parse "2024-02-17T02:00:09.572734022+00:00" as a time.Time
-	execTime, err := time.Parse(time.RFC3339Nano, execTimeStr)
-	if err != nil {
-		return fmt.Errorf("failed to parse time '%s' as time.Time", execTimeStr)
-	}
-
-	r.ExecutedAt = execTime
-
-	return nil
-}
-
-func parseStatus(r *models.Report, vip *viper.Viper) error {
-	status := vip.GetString(reportKeyStatus)
-	if status == "" {
-		return ErrMissingStatus
-	}
-
-	r.State = status
-
-	return nil
-}
-
-func parseRuntime(r *models.Report, vip *viper.Viper) error {
-	times := vip.GetStringSlice(reportKeyRuntimes)
-	if len(times) == 0 {
-		return ErrMissingRuntime
-	}
-
-	reg, _ := regexp.Compile("Total ([0-9.]+)")
-
-	runtime := ""
-	for _, t := range times {
-		match := reg.FindStringSubmatch(t)
-		if len(match) == 2 {
-			runtime = match[1]
-		}
-	}
-
-	if runtime == "" {
-		return ErrInvalidRuntime
-	}
-
-	dur, err := time.ParseDuration(runtime + "s")
-	if err != nil {
-		return fmt.Errorf("failed to parse runtime '%s' as time.Duration", runtime)
-	}
-
-	r.Runtime = int(dur.Seconds())
+	rep.PuppetVersion = v
 
 	return nil
 }

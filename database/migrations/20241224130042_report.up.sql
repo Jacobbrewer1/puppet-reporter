@@ -12,8 +12,6 @@ create table report
     changed        int            not null,
     skipped        int            not null,
     total          int            not null,
-    primary key (id),
-    constraint report_hash_unique
-        unique (hash)
+    primary key (id)
 );
 

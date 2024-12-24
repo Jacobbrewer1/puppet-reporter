@@ -13,6 +13,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	// ReportTableName is the name of the table for the Report model.
+	ReportTableName = "report"
+)
+
 // Report represents a row from 'report'.
 type Report struct {
 	Id            int       `db:"id,pk,autoinc"`
@@ -31,7 +36,7 @@ type Report struct {
 
 // Insert inserts the Report to the database.
 func (m *Report) Insert(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_Report"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_" + ReportTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "INSERT INTO report (" +
@@ -60,16 +65,16 @@ func InsertManyReports(db DB, ms ...*Report) error {
 		return nil
 	}
 
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_many_Report"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_many_" + ReportTableName))
 	defer t.ObserveDuration()
 
 	vals := make([]any, 0, len(ms))
 	for _, m := range ms {
 		// Dereference the pointer to get the struct value.
-		vals = append(vals, []any{*m})
+		vals = append(vals, any(*m))
 	}
 
-	sqlstr, args, err := inserter.NewBatch(vals, inserter.WithTable("report")).GenerateSQL()
+	sqlstr, args, err := inserter.NewBatch(vals, inserter.WithTable(ReportTableName)).GenerateSQL()
 	if err != nil {
 		return fmt.Errorf("failed to create batch insert: %w", err)
 	}
@@ -99,7 +104,7 @@ func (m *Report) IsPrimaryKeySet() bool {
 
 // Update updates the Report in the database.
 func (m *Report) Update(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_Report"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_" + ReportTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "UPDATE report " +
@@ -127,7 +132,7 @@ func (m *Report) Patch(db DB, newT *Report) error {
 		return errors.New("new report is nil")
 	}
 
-	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable("report"))
+	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(ReportTableName))
 	if err != nil {
 		return fmt.Errorf("new diff sql patch: %w", err)
 	}
@@ -154,7 +159,7 @@ func (m *Report) Patch(db DB, newT *Report) error {
 // InsertWithUpdate inserts the Report to the database, and tries to update
 // on unique constraint violations.
 func (m *Report) InsertWithUpdate(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_Report"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_" + ReportTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "INSERT INTO report (" +
@@ -198,7 +203,7 @@ func (m *Report) SaveOrUpdate(db DB) error {
 
 // Delete deletes the Report from the database.
 func (m *Report) Delete(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_Report"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_" + ReportTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "DELETE FROM report WHERE `id` = ?"
@@ -223,6 +228,26 @@ func ReportById(db DB, id int) (*Report, error) {
 	DBLog(sqlstr, id)
 	var m Report
 	if err := db.Get(&m, sqlstr, id); err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
+// ReportByHash retrieves a row from 'report' as a *Report.
+//
+// Generated from index 'report_hash_unique' of type 'unique'.
+func ReportByHash(db DB, hash string) (*Report, error) {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_" + ReportTableName))
+	defer t.ObserveDuration()
+
+	const sqlstr = "SELECT `id`, `hash`, `host`, `puppet_version`, `environment`, `state`, `executed_at`, `runtime`, `failed`, `changed`, `skipped`, `total` " +
+		"FROM report " +
+		"WHERE `hash` = ?"
+
+	DBLog(sqlstr, hash)
+	var m Report
+	if err := db.Get(&m, sqlstr, hash); err != nil {
 		return nil, err
 	}
 

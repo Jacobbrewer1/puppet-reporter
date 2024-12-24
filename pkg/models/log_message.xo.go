@@ -12,6 +12,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	// LogMessageTableName is the name of the table for the LogMessage model.
+	LogMessageTableName = "log_message"
+)
+
 // LogMessage represents a row from 'log_message'.
 type LogMessage struct {
 	Id       int    `db:"id,pk,autoinc"`
@@ -21,7 +26,7 @@ type LogMessage struct {
 
 // Insert inserts the LogMessage to the database.
 func (m *LogMessage) Insert(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_LogMessage"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_" + LogMessageTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "INSERT INTO log_message (" +
@@ -50,16 +55,16 @@ func InsertManyLogMessages(db DB, ms ...*LogMessage) error {
 		return nil
 	}
 
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_many_LogMessage"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_many_" + LogMessageTableName))
 	defer t.ObserveDuration()
 
 	vals := make([]any, 0, len(ms))
 	for _, m := range ms {
 		// Dereference the pointer to get the struct value.
-		vals = append(vals, []any{*m})
+		vals = append(vals, any(*m))
 	}
 
-	sqlstr, args, err := inserter.NewBatch(vals, inserter.WithTable("log_message")).GenerateSQL()
+	sqlstr, args, err := inserter.NewBatch(vals, inserter.WithTable(LogMessageTableName)).GenerateSQL()
 	if err != nil {
 		return fmt.Errorf("failed to create batch insert: %w", err)
 	}
@@ -89,7 +94,7 @@ func (m *LogMessage) IsPrimaryKeySet() bool {
 
 // Update updates the LogMessage in the database.
 func (m *LogMessage) Update(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_LogMessage"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_" + LogMessageTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "UPDATE log_message " +
@@ -117,7 +122,7 @@ func (m *LogMessage) Patch(db DB, newT *LogMessage) error {
 		return errors.New("new log_message is nil")
 	}
 
-	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable("log_message"))
+	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(LogMessageTableName))
 	if err != nil {
 		return fmt.Errorf("new diff sql patch: %w", err)
 	}
@@ -144,7 +149,7 @@ func (m *LogMessage) Patch(db DB, newT *LogMessage) error {
 // InsertWithUpdate inserts the LogMessage to the database, and tries to update
 // on unique constraint violations.
 func (m *LogMessage) InsertWithUpdate(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_LogMessage"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_" + LogMessageTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "INSERT INTO log_message (" +
@@ -188,7 +193,7 @@ func (m *LogMessage) SaveOrUpdate(db DB) error {
 
 // Delete deletes the LogMessage from the database.
 func (m *LogMessage) Delete(db DB) error {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_LogMessage"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_" + LogMessageTableName))
 	defer t.ObserveDuration()
 
 	const sqlstr = "DELETE FROM log_message WHERE `id` = ?"
