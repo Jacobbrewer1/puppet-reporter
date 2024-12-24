@@ -20,7 +20,7 @@ func GetVaultClient(ctx context.Context, v *viper.Viper) (vaulty.Client, error) 
 
 	vc, err := vaulty.NewClient(
 		vaulty.WithContext(ctx),
-		vaulty.WithAddr(v.GetString("vault.address")),
+		vaulty.WithAddr(addr),
 		vaulty.WithKubernetesAuthDefault(),
 		vaulty.WithKvv2Mount(v.GetString("vault.kvv2_mount")),
 	)
