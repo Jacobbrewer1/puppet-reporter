@@ -4,9 +4,11 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jacobbrewer1/patcher"
 	"github.com/jacobbrewer1/patcher/inserter"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -90,9 +92,108 @@ func InsertManyReports(db DB, ms ...*Report) error {
 	return nil
 }
 
+// IsPrimaryKeySet returns true if all primary key fields are set to none zero values
+func (m *Report) IsPrimaryKeySet() bool {
+	return IsKeySet(m.Id)
+}
+
+// Update updates the Report in the database.
+func (m *Report) Update(db DB) error {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_Report"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "UPDATE report " +
+		"SET `hash` = ?, `host` = ?, `puppet_version` = ?, `environment` = ?, `state` = ?, `executed_at` = ?, `runtime` = ?, `failed` = ?, `changed` = ?, `skipped` = ?, `total` = ? " +
+		"WHERE `id` = ?"
+
+	DBLog(sqlstr, m.Hash, m.Host, m.PuppetVersion, m.Environment, m.State, m.ExecutedAt, m.Runtime, m.Failed, m.Changed, m.Skipped, m.Total, m.Id)
+	res, err := db.Exec(sqlstr, m.Hash, m.Host, m.PuppetVersion, m.Environment, m.State, m.ExecutedAt, m.Runtime, m.Failed, m.Changed, m.Skipped, m.Total, m.Id)
+	if err != nil {
+		return err
+	}
+
+	// Requires clientFoundRows=true
+	if i, err := res.RowsAffected(); err != nil {
+		return err
+	} else if i <= 0 {
+		return ErrNoAffectedRows
+	}
+
+	return nil
+}
+
+func (m *Report) Patch(db DB, newT *Report) error {
+	if newT == nil {
+		return errors.New("new report is nil")
+	}
+
+	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable("report"))
+	if err != nil {
+		return fmt.Errorf("new diff sql patch: %w", err)
+	}
+
+	sqlstr, args, err := res.GenerateSQL()
+	if err != nil {
+		switch {
+		case errors.Is(err, patcher.ErrNoChanges):
+			return nil
+		default:
+			return fmt.Errorf("failed to create patch: %w", err)
+		}
+	}
+
+	DBLog(sqlstr, args...)
+	_, err = db.Exec(sqlstr, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute patch: %w", err)
+	}
+
+	return nil
+}
+
+// InsertWithUpdate inserts the Report to the database, and tries to update
+// on unique constraint violations.
+func (m *Report) InsertWithUpdate(db DB) error {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_Report"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "INSERT INTO report (" +
+		"`hash`, `host`, `puppet_version`, `environment`, `state`, `executed_at`, `runtime`, `failed`, `changed`, `skipped`, `total`" +
+		") VALUES (" +
+		"?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?" +
+		") ON DUPLICATE KEY UPDATE " +
+		"`hash` = VALUES(`hash`), `host` = VALUES(`host`), `puppet_version` = VALUES(`puppet_version`), `environment` = VALUES(`environment`), `state` = VALUES(`state`), `executed_at` = VALUES(`executed_at`), `runtime` = VALUES(`runtime`), `failed` = VALUES(`failed`), `changed` = VALUES(`changed`), `skipped` = VALUES(`skipped`), `total` = VALUES(`total`)"
+
+	DBLog(sqlstr, m.Hash, m.Host, m.PuppetVersion, m.Environment, m.State, m.ExecutedAt, m.Runtime, m.Failed, m.Changed, m.Skipped, m.Total)
+	res, err := db.Exec(sqlstr, m.Hash, m.Host, m.PuppetVersion, m.Environment, m.State, m.ExecutedAt, m.Runtime, m.Failed, m.Changed, m.Skipped, m.Total)
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	m.Id = int(id)
+	return nil
+}
+
 // Save saves the Report to the database.
 func (m *Report) Save(db DB) error {
+	if m.IsPrimaryKeySet() {
+		return m.Update(db)
+	}
 	return m.Insert(db)
+}
+
+// SaveOrUpdate saves the Report to the database, but tries to update
+// on unique constraint violations.
+func (m *Report) SaveOrUpdate(db DB) error {
+	if m.IsPrimaryKeySet() {
+		return m.Update(db)
+	}
+	return m.InsertWithUpdate(db)
 }
 
 // Delete deletes the Report from the database.
@@ -100,10 +201,30 @@ func (m *Report) Delete(db DB) error {
 	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_Report"))
 	defer t.ObserveDuration()
 
-	const sqlstr = "DELETE FROM report WHERE `id` = ? AND `hash` = ? AND `host` = ? AND `puppet_version` = ? AND `environment` = ? AND `state` = ? AND `executed_at` = ? AND `runtime` = ? AND `failed` = ? AND `changed` = ? AND `skipped` = ? AND `total` = ?"
+	const sqlstr = "DELETE FROM report WHERE `id` = ?"
 
-	DBLog(sqlstr, m.Id, m.Hash, m.Host, m.PuppetVersion, m.Environment, m.State, m.ExecutedAt, m.Runtime, m.Failed, m.Changed, m.Skipped, m.Total)
-	_, err := db.Exec(sqlstr, m.Id, m.Hash, m.Host, m.PuppetVersion, m.Environment, m.State, m.ExecutedAt, m.Runtime, m.Failed, m.Changed, m.Skipped, m.Total)
+	DBLog(sqlstr, m.Id)
+	_, err := db.Exec(sqlstr, m.Id)
 
 	return err
+}
+
+// ReportById retrieves a row from 'report' as a Report.
+//
+// Generated from primary key.
+func ReportById(db DB, id int) (*Report, error) {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_Report"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "SELECT `id`, `hash`, `host`, `puppet_version`, `environment`, `state`, `executed_at`, `runtime`, `failed`, `changed`, `skipped`, `total` " +
+		"FROM report " +
+		"WHERE `id` = ?"
+
+	DBLog(sqlstr, id)
+	var m Report
+	if err := db.Get(&m, sqlstr, id); err != nil {
+		return nil, err
+	}
+
+	return &m, nil
 }

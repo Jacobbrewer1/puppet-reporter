@@ -2,82 +2,43 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
-	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/gorilla/mux"
-	main2 "github.com/jacobbrewer1/puppet-reporter/cmd"
+	"github.com/google/subcommands"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
-	"github.com/jacobbrewer1/vaulty"
 )
-
-var (
-	port = flag.Int("port", 8080, "The port to listen on")
-)
-
-type App interface {
-	Start()
-}
-
-type app struct {
-	ctx context.Context
-	r   *mux.Router
-	vc  vaulty.Client
-}
-
-func newApp(
-	ctx context.Context,
-	r *mux.Router,
-	vc vaulty.Client,
-) App {
-	return &app{
-		ctx: ctx,
-		r:   r,
-		vc:  vc,
-	}
-}
-
-func (a *app) Start() {
-	svr := &http.Server{
-		Addr:                         fmt.Sprintf(":%d", *port),
-		Handler:                      a.r,
-		DisableGeneralOptionsHandler: false,
-		TLSConfig:                    nil,
-		ReadTimeout:                  0,
-		ReadHeaderTimeout:            0,
-		WriteTimeout:                 0,
-		IdleTimeout:                  0,
-		MaxHeaderBytes:               0,
-		TLSNextProto:                 nil,
-		ConnState:                    nil,
-		ErrorLog:                     nil,
-		BaseContext:                  nil,
-		ConnContext:                  nil,
-	}
-
-	go func() {
-		if err := svr.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Error starting server", slog.String(logging.KeyError, err.Error()))
-		}
-	}()
-
-	<-a.ctx.Done()
-
-	if err := svr.Shutdown(a.ctx); err != nil {
-		slog.Error("Error shutting down server", slog.String(logging.KeyError, err.Error()))
-		return
-	}
-
-	slog.Info("Server shutdown gracefully")
-}
-
-func init() {
-	flag.Parse()
-	main2.initializeLogger()
-}
 
 func main() {
+	if err := logging.GeneralLogger(appName); err != nil {
+		fmt.Println("Error setting up logging:", err)
+		os.Exit(1)
+	}
+
+	subcommands.Register(subcommands.HelpCommand(), "")
+	subcommands.Register(subcommands.FlagsCommand(), "")
+	subcommands.Register(subcommands.CommandsCommand(), "")
+
+	subcommands.Register(new(versionCmd), "")
+	subcommands.Register(new(serveCmd), "")
+
+	flag.Parse()
+
+	// Listen for ctrl+c and kill signals
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		got := <-sig
+		slog.Info("Received signal, shutting down", slog.String("signal", got.String()))
+		cancel()
+	}()
+
+	os.Exit(int(subcommands.Execute(ctx)))
 }

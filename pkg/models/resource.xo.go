@@ -4,9 +4,11 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jacobbrewer1/goschema/usql"
+	"github.com/jacobbrewer1/patcher"
 	"github.com/jacobbrewer1/patcher/inserter"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -85,9 +87,108 @@ func InsertManyResources(db DB, ms ...*Resource) error {
 	return nil
 }
 
+// IsPrimaryKeySet returns true if all primary key fields are set to none zero values
+func (m *Resource) IsPrimaryKeySet() bool {
+	return IsKeySet(m.Id)
+}
+
+// Update updates the Resource in the database.
+func (m *Resource) Update(db DB) error {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_Resource"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "UPDATE resource " +
+		"SET `report_id` = ?, `status` = ?, `name` = ?, `type` = ?, `file` = ?, `line` = ? " +
+		"WHERE `id` = ?"
+
+	DBLog(sqlstr, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line, m.Id)
+	res, err := db.Exec(sqlstr, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line, m.Id)
+	if err != nil {
+		return err
+	}
+
+	// Requires clientFoundRows=true
+	if i, err := res.RowsAffected(); err != nil {
+		return err
+	} else if i <= 0 {
+		return ErrNoAffectedRows
+	}
+
+	return nil
+}
+
+func (m *Resource) Patch(db DB, newT *Resource) error {
+	if newT == nil {
+		return errors.New("new resource is nil")
+	}
+
+	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable("resource"))
+	if err != nil {
+		return fmt.Errorf("new diff sql patch: %w", err)
+	}
+
+	sqlstr, args, err := res.GenerateSQL()
+	if err != nil {
+		switch {
+		case errors.Is(err, patcher.ErrNoChanges):
+			return nil
+		default:
+			return fmt.Errorf("failed to create patch: %w", err)
+		}
+	}
+
+	DBLog(sqlstr, args...)
+	_, err = db.Exec(sqlstr, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute patch: %w", err)
+	}
+
+	return nil
+}
+
+// InsertWithUpdate inserts the Resource to the database, and tries to update
+// on unique constraint violations.
+func (m *Resource) InsertWithUpdate(db DB) error {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_Resource"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "INSERT INTO resource (" +
+		"`report_id`, `status`, `name`, `type`, `file`, `line`" +
+		") VALUES (" +
+		"?, ?, ?, ?, ?, ?" +
+		") ON DUPLICATE KEY UPDATE " +
+		"`report_id` = VALUES(`report_id`), `status` = VALUES(`status`), `name` = VALUES(`name`), `type` = VALUES(`type`), `file` = VALUES(`file`), `line` = VALUES(`line`)"
+
+	DBLog(sqlstr, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
+	res, err := db.Exec(sqlstr, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	m.Id = int(id)
+	return nil
+}
+
 // Save saves the Resource to the database.
 func (m *Resource) Save(db DB) error {
+	if m.IsPrimaryKeySet() {
+		return m.Update(db)
+	}
 	return m.Insert(db)
+}
+
+// SaveOrUpdate saves the Resource to the database, but tries to update
+// on unique constraint violations.
+func (m *Resource) SaveOrUpdate(db DB) error {
+	if m.IsPrimaryKeySet() {
+		return m.Update(db)
+	}
+	return m.InsertWithUpdate(db)
 }
 
 // Delete deletes the Resource from the database.
@@ -95,12 +196,39 @@ func (m *Resource) Delete(db DB) error {
 	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_Resource"))
 	defer t.ObserveDuration()
 
-	const sqlstr = "DELETE FROM resource WHERE `id` = ? AND `report_id` = ? AND `status` = ? AND `name` = ? AND `type` = ? AND `file` = ? AND `line` = ?"
+	const sqlstr = "DELETE FROM resource WHERE `id` = ?"
 
-	DBLog(sqlstr, m.Id, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
-	_, err := db.Exec(sqlstr, m.Id, m.ReportId, m.Status, m.Name, m.Type, m.File, m.Line)
+	DBLog(sqlstr, m.Id)
+	_, err := db.Exec(sqlstr, m.Id)
 
 	return err
+}
+
+// ResourceById retrieves a row from 'resource' as a Resource.
+//
+// Generated from primary key.
+func ResourceById(db DB, id int) (*Resource, error) {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_Resource"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "SELECT `id`, `report_id`, `status`, `name`, `type`, `file`, `line` " +
+		"FROM resource " +
+		"WHERE `id` = ?"
+
+	DBLog(sqlstr, id)
+	var m Resource
+	if err := db.Get(&m, sqlstr, id); err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
+// GetReportIdReport Gets an instance of Report
+//
+// Generated from constraint resource_report_id_fk
+func (m *Resource) GetReportIdReport(db DB) (*Report, error) {
+	return ReportById(db, m.ReportId)
 }
 
 // Valid values for the 'Status' enum column

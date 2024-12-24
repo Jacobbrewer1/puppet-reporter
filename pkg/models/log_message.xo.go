@@ -4,8 +4,10 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/jacobbrewer1/patcher"
 	"github.com/jacobbrewer1/patcher/inserter"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -80,9 +82,108 @@ func InsertManyLogMessages(db DB, ms ...*LogMessage) error {
 	return nil
 }
 
+// IsPrimaryKeySet returns true if all primary key fields are set to none zero values
+func (m *LogMessage) IsPrimaryKeySet() bool {
+	return IsKeySet(m.Id)
+}
+
+// Update updates the LogMessage in the database.
+func (m *LogMessage) Update(db DB) error {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("update_LogMessage"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "UPDATE log_message " +
+		"SET `report_id` = ?, `message` = ? " +
+		"WHERE `id` = ?"
+
+	DBLog(sqlstr, m.ReportId, m.Message, m.Id)
+	res, err := db.Exec(sqlstr, m.ReportId, m.Message, m.Id)
+	if err != nil {
+		return err
+	}
+
+	// Requires clientFoundRows=true
+	if i, err := res.RowsAffected(); err != nil {
+		return err
+	} else if i <= 0 {
+		return ErrNoAffectedRows
+	}
+
+	return nil
+}
+
+func (m *LogMessage) Patch(db DB, newT *LogMessage) error {
+	if newT == nil {
+		return errors.New("new log_message is nil")
+	}
+
+	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable("log_message"))
+	if err != nil {
+		return fmt.Errorf("new diff sql patch: %w", err)
+	}
+
+	sqlstr, args, err := res.GenerateSQL()
+	if err != nil {
+		switch {
+		case errors.Is(err, patcher.ErrNoChanges):
+			return nil
+		default:
+			return fmt.Errorf("failed to create patch: %w", err)
+		}
+	}
+
+	DBLog(sqlstr, args...)
+	_, err = db.Exec(sqlstr, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute patch: %w", err)
+	}
+
+	return nil
+}
+
+// InsertWithUpdate inserts the LogMessage to the database, and tries to update
+// on unique constraint violations.
+func (m *LogMessage) InsertWithUpdate(db DB) error {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_update_LogMessage"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "INSERT INTO log_message (" +
+		"`report_id`, `message`" +
+		") VALUES (" +
+		"?, ?" +
+		") ON DUPLICATE KEY UPDATE " +
+		"`report_id` = VALUES(`report_id`), `message` = VALUES(`message`)"
+
+	DBLog(sqlstr, m.ReportId, m.Message)
+	res, err := db.Exec(sqlstr, m.ReportId, m.Message)
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	m.Id = int(id)
+	return nil
+}
+
 // Save saves the LogMessage to the database.
 func (m *LogMessage) Save(db DB) error {
+	if m.IsPrimaryKeySet() {
+		return m.Update(db)
+	}
 	return m.Insert(db)
+}
+
+// SaveOrUpdate saves the LogMessage to the database, but tries to update
+// on unique constraint violations.
+func (m *LogMessage) SaveOrUpdate(db DB) error {
+	if m.IsPrimaryKeySet() {
+		return m.Update(db)
+	}
+	return m.InsertWithUpdate(db)
 }
 
 // Delete deletes the LogMessage from the database.
@@ -90,10 +191,37 @@ func (m *LogMessage) Delete(db DB) error {
 	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("delete_LogMessage"))
 	defer t.ObserveDuration()
 
-	const sqlstr = "DELETE FROM log_message WHERE `id` = ? AND `report_id` = ? AND `message` = ?"
+	const sqlstr = "DELETE FROM log_message WHERE `id` = ?"
 
-	DBLog(sqlstr, m.Id, m.ReportId, m.Message)
-	_, err := db.Exec(sqlstr, m.Id, m.ReportId, m.Message)
+	DBLog(sqlstr, m.Id)
+	_, err := db.Exec(sqlstr, m.Id)
 
 	return err
+}
+
+// LogMessageById retrieves a row from 'log_message' as a LogMessage.
+//
+// Generated from primary key.
+func LogMessageById(db DB, id int) (*LogMessage, error) {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_LogMessage"))
+	defer t.ObserveDuration()
+
+	const sqlstr = "SELECT `id`, `report_id`, `message` " +
+		"FROM log_message " +
+		"WHERE `id` = ?"
+
+	DBLog(sqlstr, id)
+	var m LogMessage
+	if err := db.Get(&m, sqlstr, id); err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
+// GetReportIdReport Gets an instance of Report
+//
+// Generated from constraint log_message_report_id_fk
+func (m *LogMessage) GetReportIdReport(db DB) (*Report, error) {
+	return ReportById(db, m.ReportId)
 }
