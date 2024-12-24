@@ -17,32 +17,6 @@ import (
 	"github.com/smallfish/simpleyaml"
 )
 
-var (
-	// ErrMissingHost is returned when the host is missing from the report
-	ErrMissingHost = errors.New("missing host in report")
-
-	// ErrInvalidHost is returned when the host is invalid
-	ErrInvalidHost = errors.New("invalid host in report")
-
-	// ErrMissingPuppetVersion is returned when the puppet version is missing from the report
-	ErrMissingPuppetVersion = errors.New("missing puppet version in report")
-
-	// ErrMissingEnvironment is returned when the environment is missing from the report
-	ErrMissingEnvironment = errors.New("missing environment in report")
-
-	// ErrMissingExecutionTime is returned when the execution time is missing from the report
-	ErrMissingExecutionTime = errors.New("missing execution time in report")
-
-	// ErrMissingStatus is returned when the status is missing from the report
-	ErrMissingStatus = errors.New("missing status in report")
-
-	// ErrMissingRuntime is returned when the runtime is missing from the report
-	ErrMissingRuntime = errors.New("missing runtime in report")
-
-	// ErrInvalidRuntime is returned when the runtime is invalid
-	ErrInvalidRuntime = errors.New("invalid runtime in report")
-)
-
 type CompleteReport struct {
 	Report    *models.Report
 	Resources []*models.Resource
@@ -128,7 +102,7 @@ func parsePuppetReport(content []byte) (*CompleteReport, error) {
 // parseHost reads the `host` parameter from the YAML and populates
 // the given report-structure with suitable values.
 func parseHost(rep *models.Report, y *simpleyaml.Yaml) error {
-	host, err := y.Get("host").String()
+	host, err := y.Get(reportKeyHost).String()
 	if err != nil {
 		return errors.New("failed to get 'host' from YAML")
 	}
@@ -143,7 +117,7 @@ func parseHost(rep *models.Report, y *simpleyaml.Yaml) error {
 // parseEnvironment reads the `environment` parameter from the YAML and populates
 // the given report-structure with suitable values.
 func parseEnvironment(rep *models.Report, y *simpleyaml.Yaml) error {
-	envStr, err := y.Get("environment").String()
+	envStr, err := y.Get(reportKeyEnvironment).String()
 	if err != nil {
 		return errors.New("failed to get 'environment' from YAML")
 	}
@@ -159,7 +133,7 @@ func parseEnvironment(rep *models.Report, y *simpleyaml.Yaml) error {
 // the given report-structure with suitable values.
 func parseExecutionTime(rep *models.Report, y *simpleyaml.Yaml) error {
 	// Get the time puppet executed
-	at, err := y.Get("time").String()
+	at, err := y.Get(reportKeyTime).String()
 	if err != nil {
 		return errors.New("failed to get 'time' from YAML")
 	}
@@ -179,7 +153,7 @@ func parseExecutionTime(rep *models.Report, y *simpleyaml.Yaml) error {
 // parseStatus reads the `status` parameter from the YAML and populates
 // the given report-structure with suitable values.
 func parseStatus(rep *models.Report, y *simpleyaml.Yaml) error {
-	s, err := y.Get("status").String()
+	s, err := y.Get(reportKeyStatus).String()
 	if err != nil {
 		return errors.New("failed to get 'status' from YAML")
 	}
@@ -192,7 +166,7 @@ func parseStatus(rep *models.Report, y *simpleyaml.Yaml) error {
 // parseRuntime reads the `metrics.time.values` parameters from the YAML
 // and populates given report-structure with suitable values.
 func parseRuntime(rep *models.Report, y *simpleyaml.Yaml) error {
-	times, err := y.Get("metrics").Get("time").Get("values").Array()
+	times, err := y.Get(reportKeyMetrics).Get(reportKeyTime).Get(reportKeyValues).Array()
 	if err != nil {
 		return err
 	}
@@ -222,7 +196,7 @@ func parseRuntime(rep *models.Report, y *simpleyaml.Yaml) error {
 // failed, changed, skipped, etc, and updates the given report-structure
 // with those values.
 func parseResources(y *simpleyaml.Yaml) ([]*models.Resource, error) {
-	rs, err := y.Get("resource_statuses").Map()
+	rs, err := y.Get(reportKeyResources).Map()
 	if err != nil {
 		return nil, errors.New("failed to get 'resource_statuses' from YAML")
 	}
@@ -244,27 +218,20 @@ func parseResources(y *simpleyaml.Yaml) ([]*models.Resource, error) {
 
 		res := parseResource(m)
 
-		if m["skipped"] == "true" {
+		const trueStr = "true"
+
+		switch {
+		case m[stateSkipped] == trueStr:
 			res.Status = stateSkipped
-			resources = append(resources, res)
-		}
-
-		if m["changed"] == "true" {
+		case m[stateChanged] == trueStr:
 			res.Status = stateChanged
-			resources = append(resources, res)
-		}
-
-		if m["failed"] == "true" {
+		case m[stateFailed] == trueStr:
 			res.Status = stateFailed
-			resources = append(resources, res)
+		default:
+			res.Status = stateUnchanged
 		}
 
-		if m["failed"] == "false" &&
-			m["skipped"] == "false" &&
-			m["changed"] == "false" {
-			res.Status = "unchanged"
-			resources = append(resources, res)
-		}
+		resources = append(resources, res)
 	}
 
 	return resources, nil
@@ -272,13 +239,18 @@ func parseResources(y *simpleyaml.Yaml) ([]*models.Resource, error) {
 
 // parseLogs updates the given report with any logged messages.
 func parseLogs(y *simpleyaml.Yaml) []*models.LogMessage {
-	logs, err := y.Get("logs").Array()
+	logs, err := y.Get(reportKeyLogs).Array()
 	if err != nil {
 		slog.Error("failed to get 'logs' from YAML", slog.String(logging.KeyError, err.Error()))
 		return nil
 	}
 
 	logged := make([]*models.LogMessage, 0)
+
+	const (
+		keyMessage = "message"
+		keySource  = "source"
+	)
 
 	for _, v2 := range logs {
 		// create a map
@@ -293,9 +265,9 @@ func parseLogs(y *simpleyaml.Yaml) []*models.LogMessage {
 				m[key.(string)] = fmt.Sprint(val)
 			}
 		}
-		if len(m["message"]) > 0 {
+		if len(m[keyMessage]) > 0 {
 			logged = append(logged, &models.LogMessage{
-				Message: m["source"] + " : " + m["message"],
+				Message: m[keySource] + " : " + m[keyMessage],
 			})
 		}
 	}
@@ -323,7 +295,7 @@ func parseResource(m map[string]string) *models.Resource {
 // parseResourceStates updates the given report with details of any resource
 // which was failed, changed, or skipped.
 func parseResourceStates(rep *models.Report, y *simpleyaml.Yaml) error {
-	gotResources, err := y.Get("metrics").Get("resources").Get("values").Array()
+	gotResources, err := y.Get(reportKeyMetrics).Get(reportKeyResources).Get(reportKeyValues).Array()
 	if err != nil {
 		return fmt.Errorf("failed to get 'metrics.resources.values' from YAML: %w", err)
 	}
@@ -393,7 +365,7 @@ func parseResourceStates(rep *models.Report, y *simpleyaml.Yaml) error {
 }
 
 func parsePuppetVersion(rep *models.Report, y *simpleyaml.Yaml) error {
-	version, err := y.Get("puppet_version").String()
+	version, err := y.Get(reportKeyPuppetVersion).String()
 	if err != nil {
 		return errors.New("failed to get 'puppet_version' from YAML")
 	}
