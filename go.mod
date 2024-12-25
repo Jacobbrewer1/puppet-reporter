@@ -9,7 +9,7 @@ require (
 	github.com/google/subcommands v1.2.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jacobbrewer1/goschema v0.0.12
-	github.com/jacobbrewer1/patcher v0.1.12
+	github.com/jacobbrewer1/patcher v0.1.13
 	github.com/jacobbrewer1/uhttp v0.0.4
 	github.com/jacobbrewer1/vaulty v0.1.6
 	github.com/jmoiron/sqlx v1.4.0
