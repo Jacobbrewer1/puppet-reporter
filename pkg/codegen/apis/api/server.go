@@ -13,9 +13,12 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Get all reports
+	// (GET /reports)
+	GetReports(w http.ResponseWriter, r *http.Request)
 	// Upload a report
 	// (POST /upload)
-	PostUpload(w http.ResponseWriter, r *http.Request)
+	UploadReport(w http.ResponseWriter, r *http.Request)
 }
 
 type RateLimiterFunc = func(http.ResponseWriter, *http.Request) error
@@ -62,8 +65,8 @@ func WithMetricsMiddleware(middleware MetricsMiddlewareFunc) ServerOption {
 // ServerOption represents an optional feature applied to the server.
 type ServerOption func(s *ServerInterfaceWrapper)
 
-// PostUpload operation middleware
-func (siw *ServerInterfaceWrapper) PostUpload(w http.ResponseWriter, r *http.Request) {
+// GetReports operation middleware
+func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cw := uhttp.NewResponseWriter(w,
 		uhttp.WithDefaultStatusCode(http.StatusOK),
@@ -78,7 +81,29 @@ func (siw *ServerInterfaceWrapper) PostUpload(w http.ResponseWriter, r *http.Req
 	}()
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.handler.PostUpload(cw, r)
+		siw.handler.GetReports(w, r)
+	}))
+
+	handler.ServeHTTP(cw, r.WithContext(ctx))
+}
+
+// UploadReport operation middleware
+func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	cw := uhttp.NewResponseWriter(w,
+		uhttp.WithDefaultStatusCode(http.StatusOK),
+		uhttp.WithDefaultHeader("X-Request-ID", uhttp.RequestIDFromContext(ctx)),
+		uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
+	)
+
+	defer func() {
+		if siw.metricsMiddleware != nil {
+			siw.metricsMiddleware(cw, r)
+		}
+	}()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.handler.UploadReport(w, r)
 	}))
 
 	handler.ServeHTTP(cw, r.WithContext(ctx))
@@ -200,7 +225,6 @@ func RegisterUnauthedHandlers(router *mux.Router, si ServerInterface, opts ...Se
 	router.Use(uhttp.AuthHeaderToContextMux())
 	router.Use(uhttp.GenerateOrCopyRequestIDMux())
 
-	// We do not have a gateway preparer here as no auth is sent.
-
-	router.Methods(http.MethodPost).Path("/upload").Handler(wrapHandler(wrapper.PostUpload))
+	router.Methods(http.MethodGet).Path("/reports").Handler(wrapHandler(wrapper.GetReports))
+	router.Methods(http.MethodPost).Path("/upload").Handler(wrapHandler(wrapper.UploadReport))
 }

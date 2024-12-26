@@ -215,16 +215,28 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
     {{end}}
   {{end}}
 
-
+  {{range .Bodies}}
+  {{$contentType := .ContentType -}}
+  {{ if eq $contentType "application/json" }}
+  {{with .TypeDef $opid}}
+    // ------------- Body parameter for {{$opid}} for {{$contentType}} ContentType -------------
+    body := new({{.TypeName}})
+    if err := json.NewDecoder(r.Body).Decode(body); err != nil {
+       siw.errorHandlerFunc(cw, r, &UnmarshalingParamError{ParamName: "body", Err: err})
+       return
+    }
+  {{end}}
+  {{end}}
+  {{end}}
 
   handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     {{- if .Spec.Security }}
     if siw.authz != nil {
-      siw.authz.{{$opid}}(cw, r.WithContext(ctx){{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}})
+      siw.authz.{{$opid}}(cw, r.WithContext(ctx){{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}}{{ if gt (len .Bodies) 0 }}{{range .Bodies}}{{if eq .ContentType "application/json"}}, body{{end}}{{end}}{{end}})
       return
     }
     {{ else }}
-    siw.handler.{{.OperationId}}(cw, r{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}})
+    siw.handler.{{.OperationId}}(w, r{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}}{{ if gt (len .Bodies) 0 }}{{range .Bodies}}{{if eq .ContentType "application/json"}}, body{{end}}{{end}}{{end}})
     {{ end -}}
   }))
 

@@ -1,7 +1,7 @@
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-{{range .}}{{.SummaryAsComment }}
-// ({{.Method}} {{.Path}})
-{{.OperationId}}(w http.ResponseWriter, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{.OperationId}}Params{{end}})
-{{end}}
+  {{range .}}{{.SummaryAsComment }}{{$opid := .OperationId}}
+  // ({{.Method}} {{.Path}})
+  {{.OperationId}}(w http.ResponseWriter, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{.OperationId}}Params{{end}}{{range $i, $b := .Bodies}}{{if eq $b.ContentType "application/json"}}, body{{$i}} *{{$opid}}JSONBody{{end}}{{end}})
+  {{end}}
 }

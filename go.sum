@@ -82,6 +82,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jacobbrewer1/goschema v0.0.12 h1:KL3EkHlv5OcUHbTGrvkduzkAgPn5Ix/xHxOiBS6jSOE=
 github.com/jacobbrewer1/goschema v0.0.12/go.mod h1:5dMjrIBqK/6gBUgWDSxPUuH4CavCTI9qNXcJ58rozRI=
+github.com/jacobbrewer1/pagefilter v0.1.5 h1:2uHtWdMXxz5tjx3bvWsULFJxc00noydTArOrgzf61gA=
+github.com/jacobbrewer1/pagefilter v0.1.5/go.mod h1:c3qZwVMwBtUi8D8atQ169OdRGLJziNhIObb8GN2dGUs=
 github.com/jacobbrewer1/patcher v0.1.12 h1:KpdNuF6qA9eDdNf1M3f1wdYiJdhHDPRnOtIy94qaBxI=
 github.com/jacobbrewer1/patcher v0.1.12/go.mod h1:RTWS5kY5uTo0VBv7PcFamRy6UGiNvM6f4zGvIShBw0k=
 github.com/jacobbrewer1/uhttp v0.0.4 h1:3RrRmz0fjsnLKuAs5fkflOcsjuBFoL0XvC6Xct/TDCk=

@@ -11,10 +11,11 @@ import (
 
 	"github.com/google/subcommands"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
 )
 
 func main() {
-	if err := logging.GeneralLogger(appName); err != nil {
+	if err := logging.GeneralLogger(utils.AppName); err != nil {
 		fmt.Println("Error setting up logging:", err)
 		os.Exit(1)
 	}

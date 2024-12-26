@@ -13,7 +13,7 @@ import (
 	"github.com/jacobbrewer1/uhttp"
 )
 
-func (s *service) PostUpload(w http.ResponseWriter, r *http.Request) {
+func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 	l := logging.LoggerFromRequest(r)
 
 	if r.Body == http.NoBody {
@@ -84,4 +84,6 @@ func (s *service) PostUpload(w http.ResponseWriter, r *http.Request) {
 		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error saving logs", err)
 		return
 	}
+
+	uhttp.SendMessageWithStatus(w, http.StatusCreated, "Report saved")
 }

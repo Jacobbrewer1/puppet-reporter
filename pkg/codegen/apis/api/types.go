@@ -4,13 +4,39 @@
 package api
 
 import (
+	"time"
+
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// PostUploadMultipartBody defines parameters for PostUpload.
-type PostUploadMultipartBody struct {
+// Report defines the model for report.
+type Report struct {
+	Environment    *string    `json:"environment,omitempty"`
+	ExecutedAt     *time.Time `json:"executed_at,omitempty"`
+	Hash           *string    `json:"hash,omitempty"`
+	Host           *string    `json:"host,omitempty"`
+	PuppetVersion  *float32   `json:"puppet_version,omitempty"`
+	RuntimeSeconds *int64     `json:"runtime_seconds,omitempty"`
+	Status         *string    `json:"status,omitempty"`
+	TotalChanged   *int64     `json:"total_changed,omitempty"`
+	TotalFailed    *int64     `json:"total_failed,omitempty"`
+	TotalResources *int64     `json:"total_resources,omitempty"`
+	TotalSkipped   *int64     `json:"total_skipped,omitempty"`
+}
+
+// ReportResponse defines the model for report_response.
+type ReportResponse struct {
+	Reports []Report `json:"reports"`
+	Total   int64    `json:"total"`
+}
+
+// UploadReportMultipartBody defines parameters for UploadReport.
+type UploadReportMultipartBody struct {
 	File *openapi_types.File `json:"file,omitempty"`
 }
 
-// PostUploadMultipartRequestBody defines body for PostUpload for multipart/form-data ContentType.
-type PostUploadMultipartRequestBody PostUploadMultipartBody
+// UploadReportMultipartRequestBody defines body for UploadReport for multipart/form-data ContentType.
+type UploadReportMultipartRequestBody UploadReportMultipartBody
+
+// Temporary inclusion of type alias for backwards compatibility
+type UploadReportJSONBody = UploadReportMultipartBody

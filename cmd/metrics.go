@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
 	"github.com/jacobbrewer1/uhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -17,7 +18,7 @@ var (
 	httpTotalRequests = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:      "http_requests_total",
-			Namespace: appName,
+			Namespace: utils.AppName,
 			Help:      "Total number of http requests",
 		},
 		[]string{"path", "method", "status_code"},
@@ -27,7 +28,7 @@ var (
 	httpRequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:      "http_request_duration_seconds",
-			Namespace: appName,
+			Namespace: utils.AppName,
 			Help:      "Duration of the http request",
 		},
 		[]string{"path", "method", "status_code"},
@@ -37,7 +38,7 @@ var (
 	httpRequestSize = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:      "http_request_size",
-			Namespace: appName,
+			Namespace: utils.AppName,
 			Help:      "Size of the http request",
 		},
 		[]string{"path", "method", "status_code"},

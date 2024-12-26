@@ -1,25 +1,26 @@
 package api
 
 const (
-	reportKeyHost          = "host"
-	reportKeyPuppetVersion = "puppet_version"
-	reportKeyEnvironment   = "environment"
-	reportKeyTime          = "time"
-	reportKeyStatus        = "status"
-	reportKeyMetrics       = "metrics"
-	reportKeyValues        = "values"
-	reportKeyLogs          = "logs"
-	reportKeyResources     = "resource_statuses"
+	reportKeyHost           = "host"
+	reportKeyPuppetVersion  = "puppet_version"
+	reportKeyEnvironment    = "environment"
+	reportKeyTime           = "time"
+	reportKeyStatus         = "status"
+	reportKeyMetrics        = "metrics"
+	reportKeyValues         = "values"
+	reportKeyLogs           = "logs"
+	reportKeyResources      = "resources"
+	reportKeyResourceStates = "resource_statuses"
 
-	resourceKeyResourceType = "resource_type"
-	resourceKeyFile         = "file"
-	resourceKeyLine         = "line"
-	resourceKeyTitle        = "title"
+	resourceKeyResourceType = "RESOURCE_TYPE"
+	resourceKeyFile         = "FILE"
+	resourceKeyLine         = "LINE"
+	resourceKeyTitle        = "TITLE"
 
-	stateSkipped   = "skipped"
-	stateFailed    = "failed"
-	stateChanged   = "changed"
-	stateUnchanged = "unchanged"
+	stateSkipped   = "SKIPPED"
+	stateFailed    = "FAILED"
+	stateChanged   = "CHANGED"
+	stateUnchanged = "UNCHANGED"
 
 	unknownLineNum = -1
 )

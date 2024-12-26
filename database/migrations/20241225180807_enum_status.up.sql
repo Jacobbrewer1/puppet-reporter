@@ -1,0 +1,1 @@
+alter table resource modify column status enum ('SKIPPED', 'CHANGED', 'FAILED', 'UNCHANGED') not null;
