@@ -15,3 +15,5 @@ func NewRepository(db *repositories.Database) Repository {
 		db: db,
 	}
 }
+
+type GetReportsFilters struct{}

@@ -86,12 +86,15 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// PostUploadWithBody request with any body
-	PostUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetReports request
+	GetReports(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UploadReportWithBody request with any body
+	UploadReportWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) PostUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostUploadRequestWithBody(c.Server, contentType, body)
+func (c *Client) GetReports(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReportsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -102,8 +105,47 @@ func (c *Client) PostUploadWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-// NewPostUploadRequestWithBody generates requests for PostUpload with any type of body
-func NewPostUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func (c *Client) UploadReportWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadReportRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewGetReportsRequest generates requests for GetReports
+func NewGetReportsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUploadReportRequestWithBody generates requests for UploadReport with any type of body
+func NewUploadReportRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -174,11 +216,39 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// PostUploadWithBodyWithResponse request with any body
-	PostUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostUploadResponse, error)
+	// GetReportsWithResponse request
+	GetReportsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReportsResponse, error)
+
+	// UploadReportWithBodyWithResponse request with any body
+	UploadReportWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReportResponse, error)
 }
 
-type PostUploadResponse struct {
+type GetReportsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ReportResponse
+	JSON500      *struct {
+		Message *string `json:"message,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReportsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReportsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UploadReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *struct {
@@ -193,7 +263,7 @@ type PostUploadResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostUploadResponse) Status() string {
+func (r UploadReportResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -201,31 +271,75 @@ func (r PostUploadResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostUploadResponse) StatusCode() int {
+func (r UploadReportResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-// PostUploadWithBodyWithResponse request with arbitrary body returning *PostUploadResponse
-func (c *ClientWithResponses) PostUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostUploadResponse, error) {
-	rsp, err := c.PostUploadWithBody(ctx, contentType, body, reqEditors...)
+// GetReportsWithResponse request returning *GetReportsResponse
+func (c *ClientWithResponses) GetReportsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReportsResponse, error) {
+	rsp, err := c.GetReports(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostUploadResponse(rsp)
+	return ParseGetReportsResponse(rsp)
 }
 
-// ParsePostUploadResponse parses an HTTP response from a PostUploadWithResponse call
-func ParsePostUploadResponse(rsp *http.Response) (*PostUploadResponse, error) {
+// UploadReportWithBodyWithResponse request with arbitrary body returning *UploadReportResponse
+func (c *ClientWithResponses) UploadReportWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReportResponse, error) {
+	rsp, err := c.UploadReportWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUploadReportResponse(rsp)
+}
+
+// ParseGetReportsResponse parses an HTTP response from a GetReportsWithResponse call
+func ParseGetReportsResponse(rsp *http.Response) (*GetReportsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostUploadResponse{
+	response := &GetReportsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ReportResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Message *string `json:"message,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUploadReportResponse parses an HTTP response from a UploadReportWithResponse call
+func ParseUploadReportResponse(rsp *http.Response) (*UploadReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UploadReportResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

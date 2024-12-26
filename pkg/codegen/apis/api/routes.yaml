@@ -11,6 +11,7 @@ tags:
 paths:
   /upload:
     post:
+      operationId: uploadReport
       tags:
         - reports
       summary: Upload a report
@@ -55,22 +56,89 @@ paths:
                     type: string
                     example: An error occurred while processing the report
 
+  /reports:
+    get:
+      operationId: getReports
+      tags:
+        - reports
+      summary: Get all reports
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/report_response'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: An error occurred while fetching the reports
+
 components:
   schemas:
-    Report:
+    report_response:
+      type: object
+      required:
+        - reports
+        - total
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/report'
+        total:
+          type: integer
+          format: int64
+          example: 10
+
+    report:
       type: object
       properties:
-        id:
+        hash:
           type: string
-          format: uuid
-          example: 123e4567-e89b-12d3-a456-426614174000
-        name:
+          example: 3b0e8b4e1
+        host:
           type: string
-          example: report.json
-        size:
-          type: integer
-          example: 1024
-        created_at:
+          example: 192.168.0.1
+        puppet_version:
+          type: number
+          format: float
+          example: 8.6
+        environment:
+          type: string
+          example: PRODUCTION
+        status:
+          type: string
+          example: CHANGED
+        executed_at:
           type: string
           format: date-time
-          example: 2021-01-01T00:00:00Z
+          example: 2021-07-01T12:00:00Z
+        runtime_seconds:
+          type: integer
+          format: int64
+          example: 10.5
+        total_failed:
+          type: integer
+          format: int64
+          example: 2
+        total_changed:
+          type: integer
+          format: int64
+          example: 5
+        total_skipped:
+          type: integer
+          format: int64
+          example: 1
+        total_resources:
+          type: integer
+          format: int64
+          example: 100

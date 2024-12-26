@@ -3,6 +3,7 @@
 package api
 
 import (
+	pagefilter "github.com/jacobbrewer1/pagefilter"
 	models "github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -35,6 +36,36 @@ func (_m *MockRepository) GetReportByHash(hash string) (*models.Report, error) {
 
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetReports provides a mock function with given fields: paginationDetails, filters
+func (_m *MockRepository) GetReports(paginationDetails *pagefilter.PaginatorDetails, filters *GetReportsFilters) (*pagefilter.PaginatedResponse[models.Report], error) {
+	ret := _m.Called(paginationDetails, filters)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetReports")
+	}
+
+	var r0 *pagefilter.PaginatedResponse[models.Report]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*pagefilter.PaginatorDetails, *GetReportsFilters) (*pagefilter.PaginatedResponse[models.Report], error)); ok {
+		return rf(paginationDetails, filters)
+	}
+	if rf, ok := ret.Get(0).(func(*pagefilter.PaginatorDetails, *GetReportsFilters) *pagefilter.PaginatedResponse[models.Report]); ok {
+		r0 = rf(paginationDetails, filters)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pagefilter.PaginatedResponse[models.Report])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*pagefilter.PaginatorDetails, *GetReportsFilters) error); ok {
+		r1 = rf(paginationDetails, filters)
 	} else {
 		r1 = ret.Error(1)
 	}

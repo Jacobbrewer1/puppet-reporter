@@ -59,7 +59,7 @@ func parsePuppetReport(content []byte) (*CompleteReport, error) {
 	}
 
 	if err := parseResourceStates(report, yaml); err != nil {
-		return nil, fmt.Errorf("parsing resources: %w", err)
+		return nil, fmt.Errorf("parsing resource states: %w", err)
 	}
 
 	complete.Report = report
@@ -125,7 +125,7 @@ func parseEnvironment(rep *models.Report, y *simpleyaml.Yaml) error {
 	if !reg.MatchString(envStr) {
 		return errors.New("the submitted 'environment' field failed our security check")
 	}
-	rep.Environment = envStr
+	rep.Environment = strings.ToUpper(envStr)
 	return nil
 }
 
@@ -158,7 +158,7 @@ func parseStatus(rep *models.Report, y *simpleyaml.Yaml) error {
 		return errors.New("failed to get 'status' from YAML")
 	}
 
-	rep.State = s
+	rep.State = strings.ToUpper(s)
 
 	return nil
 }
@@ -196,7 +196,7 @@ func parseRuntime(rep *models.Report, y *simpleyaml.Yaml) error {
 // failed, changed, skipped, etc, and updates the given report-structure
 // with those values.
 func parseResources(y *simpleyaml.Yaml) ([]*models.Resource, error) {
-	rs, err := y.Get(reportKeyResources).Map()
+	rs, err := y.Get(reportKeyResourceStates).Map()
 	if err != nil {
 		return nil, errors.New("failed to get 'resource_statuses' from YAML")
 	}
@@ -212,7 +212,7 @@ func parseResources(y *simpleyaml.Yaml) ([]*models.Resource, error) {
 
 				// Store the key/val in the map.
 				k, v := key.Interface(), strct.Interface()
-				m[k.(string)] = fmt.Sprint(v)
+				m[strings.ToUpper(k.(string))] = fmt.Sprint(v)
 			}
 		}
 

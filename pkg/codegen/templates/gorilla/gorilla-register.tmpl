@@ -60,12 +60,11 @@ func RegisterUnauthedHandlers(router *mux.Router, si ServerInterface, opts ...Se
     router.Use(uhttp.AuthHeaderToContextMux())
     router.Use(uhttp.GenerateOrCopyRequestIDMux())
 
-    // We do not have a gateway preparer here as no auth is sent.
     {{ range . }}
         {{- $unauth := not .Spec.Security }}
         {{- if $unauth }}
             router.Methods(http.Method{{.Method | lower | title }}).Path("{{.Path | swaggerUriToGorillaUri}}").Handler(wrapHandler(wrapper.{{.OperationId}}))
-        {{ end -}}
+        {{- end -}}
     {{ end -}}
 }
 {{ end -}}
