@@ -98,14 +98,14 @@ github.com/iancoleman/strcase
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/jacobbrewer1/goschema v0.0.12
+# github.com/jacobbrewer1/goschema v0.0.13
 ## explicit; go 1.23
 github.com/jacobbrewer1/goschema/usql
 # github.com/jacobbrewer1/pagefilter v0.1.5
 ## explicit; go 1.23
 github.com/jacobbrewer1/pagefilter
 github.com/jacobbrewer1/pagefilter/common
-# github.com/jacobbrewer1/patcher v0.1.12
+# github.com/jacobbrewer1/patcher v0.1.13
 ## explicit; go 1.22
 github.com/jacobbrewer1/patcher
 github.com/jacobbrewer1/patcher/inserter
