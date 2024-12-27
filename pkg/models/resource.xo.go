@@ -238,8 +238,8 @@ func (m *Resource) GetReportIdReport(db DB) (*Report, error) {
 
 // Valid values for the 'Status' enum column
 var (
-	ResourceStatusSkipped   = usql.NewEnum("skipped")
-	ResourceStatusChanged   = usql.NewEnum("changed")
-	ResourceStatusFailed    = usql.NewEnum("failed")
-	ResourceStatusUnchanged = usql.NewEnum("unchanged")
+	ResourceStatusSkipped   = usql.NewEnum("SKIPPED")
+	ResourceStatusChanged   = usql.NewEnum("CHANGED")
+	ResourceStatusFailed    = usql.NewEnum("FAILED")
+	ResourceStatusUnchanged = usql.NewEnum("UNCHANGED")
 )

@@ -20,4 +20,10 @@ type Repository interface {
 
 	// SaveLogs saves logs to the database
 	SaveLogs(logs []*models.LogMessage) error
+
+	// GetResourcesByReportID gets resources from the database by report ID
+	GetResourcesByReportID(reportID int) ([]*models.Resource, error)
+
+	// GetLogsByReportID gets logs from the database by report ID
+	GetLogsByReportID(reportID int) ([]*models.LogMessage, error)
 }
