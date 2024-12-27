@@ -9,8 +9,13 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/uhttp"
+)
+
+const (
+	defaultFileName = "report.yaml"
 )
 
 func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +34,17 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rep, err := parsePuppetReport(bdy)
+	fileBody := new(api.UploadReportMultipartBody)
+	fileBody.File.InitFromBytes(bdy, defaultFileName)
+
+	bts, err := fileBody.File.Bytes()
+	if err != nil {
+		l.Error("Error reading file", slog.String("error", err.Error()))
+		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error reading file", err)
+		return
+	}
+
+	rep, err := parsePuppetReport(bts)
 	if err != nil {
 		l.Error("Error parsing puppet report", slog.String("error", err.Error()))
 		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error parsing puppet report", fmt.Errorf("error parsing puppet report: %w", err))
