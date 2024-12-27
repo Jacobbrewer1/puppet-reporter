@@ -13,6 +13,36 @@ type MockRepository struct {
 	mock.Mock
 }
 
+// GetLogsByReportID provides a mock function with given fields: reportID
+func (_m *MockRepository) GetLogsByReportID(reportID int) ([]*models.LogMessage, error) {
+	ret := _m.Called(reportID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLogsByReportID")
+	}
+
+	var r0 []*models.LogMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(int) ([]*models.LogMessage, error)); ok {
+		return rf(reportID)
+	}
+	if rf, ok := ret.Get(0).(func(int) []*models.LogMessage); ok {
+		r0 = rf(reportID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.LogMessage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(int) error); ok {
+		r1 = rf(reportID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetReportByHash provides a mock function with given fields: hash
 func (_m *MockRepository) GetReportByHash(hash string) (*models.Report, error) {
 	ret := _m.Called(hash)
@@ -66,6 +96,36 @@ func (_m *MockRepository) GetReports(paginationDetails *pagefilter.PaginatorDeta
 
 	if rf, ok := ret.Get(1).(func(*pagefilter.PaginatorDetails, *GetReportsFilters) error); ok {
 		r1 = rf(paginationDetails, filters)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetResourcesByReportID provides a mock function with given fields: reportID
+func (_m *MockRepository) GetResourcesByReportID(reportID int) ([]*models.Resource, error) {
+	ret := _m.Called(reportID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetResourcesByReportID")
+	}
+
+	var r0 []*models.Resource
+	var r1 error
+	if rf, ok := ret.Get(0).(func(int) ([]*models.Resource, error)); ok {
+		return rf(reportID)
+	}
+	if rf, ok := ret.Get(0).(func(int) []*models.Resource); ok {
+		r0 = rf(reportID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.Resource)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(int) error); ok {
+		r1 = rf(reportID)
 	} else {
 		r1 = ret.Error(1)
 	}

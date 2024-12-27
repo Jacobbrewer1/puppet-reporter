@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/oapi-codegen/runtime"
 )
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
@@ -89,12 +91,27 @@ type ClientInterface interface {
 	// GetReports request
 	GetReports(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetReport request
+	GetReport(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UploadReportWithBody request with any body
 	UploadReportWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetReports(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetReportsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetReport(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReportRequest(c.Server, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +144,40 @@ func NewGetReportsRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/reports")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetReportRequest generates requests for GetReport
+func NewGetReportRequest(server string, hash string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "hash", runtime.ParamLocationPath, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -219,6 +270,9 @@ type ClientWithResponsesInterface interface {
 	// GetReportsWithResponse request
 	GetReportsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReportsResponse, error)
 
+	// GetReportWithResponse request
+	GetReportWithResponse(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*GetReportResponse, error)
+
 	// UploadReportWithBodyWithResponse request with any body
 	UploadReportWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReportResponse, error)
 }
@@ -242,6 +296,34 @@ func (r GetReportsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetReportsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetReportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ReportDetails
+	JSON404      *struct {
+		Message *string `json:"message,omitempty"`
+	}
+	JSON500 *struct {
+		Message *string `json:"message,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReportResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -287,6 +369,15 @@ func (c *ClientWithResponses) GetReportsWithResponse(ctx context.Context, reqEdi
 	return ParseGetReportsResponse(rsp)
 }
 
+// GetReportWithResponse request returning *GetReportResponse
+func (c *ClientWithResponses) GetReportWithResponse(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*GetReportResponse, error) {
+	rsp, err := c.GetReport(ctx, hash, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReportResponse(rsp)
+}
+
 // UploadReportWithBodyWithResponse request with arbitrary body returning *UploadReportResponse
 func (c *ClientWithResponses) UploadReportWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReportResponse, error) {
 	rsp, err := c.UploadReportWithBody(ctx, contentType, body, reqEditors...)
@@ -316,6 +407,50 @@ func ParseGetReportsResponse(rsp *http.Response) (*GetReportsResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Message *string `json:"message,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetReportResponse parses an HTTP response from a GetReportWithResponse call
+func ParseGetReportResponse(rsp *http.Response) (*GetReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReportDetails
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Message *string `json:"message,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest struct {

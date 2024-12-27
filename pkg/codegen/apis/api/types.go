@@ -9,6 +9,11 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// LogMessage defines the model for log_message.
+type LogMessage struct {
+	Message *string `json:"message,omitempty"`
+}
+
 // Report defines the model for report.
 type Report struct {
 	Environment    *string    `json:"environment,omitempty"`
@@ -24,11 +29,38 @@ type Report struct {
 	TotalSkipped   *int64     `json:"total_skipped,omitempty"`
 }
 
+// ReportDetails defines the model for report_details.
+type ReportDetails struct {
+	Logs      *[]LogMessage `json:"logs,omitempty"`
+	Report    *Report       `json:"report,omitempty"`
+	Resources *[]Resource   `json:"resources,omitempty"`
+}
+
 // ReportResponse defines the model for report_response.
 type ReportResponse struct {
 	Reports []Report `json:"reports"`
 	Total   int64    `json:"total"`
 }
+
+// Resource defines the model for resource.
+type Resource struct {
+	File   *string `json:"file,omitempty"`
+	Line   *int64  `json:"line,omitempty"`
+	Name   *string `json:"name,omitempty"`
+	Status *Status `json:"status,omitempty"`
+	Type   *string `json:"type,omitempty"`
+}
+
+// Status defines the model for status.
+type Status = string
+
+// List of Status
+const (
+	Status_CHANGED   Status = "CHANGED"
+	Status_FAILED    Status = "FAILED"
+	Status_SKIPPED   Status = "SKIPPED"
+	Status_UNCHANGED Status = "UNCHANGED"
+)
 
 // UploadReportMultipartBody defines parameters for UploadReport.
 type UploadReportMultipartBody struct {

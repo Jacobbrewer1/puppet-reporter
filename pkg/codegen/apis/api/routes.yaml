@@ -82,6 +82,47 @@ paths:
                     type: string
                     example: An error occurred while fetching the reports
 
+  /reports/{hash}:
+    get:
+      operationId: getReport
+      tags:
+        - reports
+      summary: Get a report by hash
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          description: The hash of the report
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/report_details'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Report not found
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: An error occurred while fetching the report
+
 components:
   schemas:
     report_response:
@@ -142,3 +183,51 @@ components:
           type: integer
           format: int64
           example: 100
+
+    report_details:
+      type: object
+      properties:
+        report:
+          $ref: '#/components/schemas/report'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/resource'
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/log_message'
+
+    resource:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/status'
+        name:
+          type: string
+          example: apt-update
+        type:
+          type: string
+          example: Exec
+        file:
+          type: string
+          example: /opt/puppet/site/default_config/manifests/init.pp
+        line:
+          type: integer
+          format: int64
+          example: 10
+
+    status:
+      type: string
+      enum:
+        - CHANGED
+        - FAILED
+        - SKIPPED
+        - UNCHANGED
+
+    log_message:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'Example message'

@@ -13,6 +13,9 @@ import (
 var (
 	// ErrNoReports is returned when no reports are found.
 	ErrNoReports = errors.New("no reports found")
+
+	// ErrReportNotFound is returned when a report is not found.
+	ErrReportNotFound = errors.New("report not found")
 )
 
 func (r *repository) SaveReport(report *models.Report) error {
@@ -20,7 +23,17 @@ func (r *repository) SaveReport(report *models.Report) error {
 }
 
 func (r *repository) GetReportByHash(hash string) (*models.Report, error) {
-	return models.ReportByHash(r.db, hash)
+	rep, err := models.ReportByHash(r.db, hash)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrReportNotFound
+		default:
+			return nil, fmt.Errorf("get report by hash: %w", err)
+		}
+	}
+
+	return rep, nil
 }
 
 func (r *repository) GetReports(paginationDetails *pagefilter.PaginatorDetails, filters *GetReportsFilters) (*pagefilter.PaginatedResponse[models.Report], error) {

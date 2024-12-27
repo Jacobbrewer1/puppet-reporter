@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jacobbrewer1/uhttp"
+	"github.com/oapi-codegen/runtime"
 )
 
 // ServerInterface represents all server handlers.
@@ -16,6 +17,9 @@ type ServerInterface interface {
 	// Get all reports
 	// (GET /reports)
 	GetReports(w http.ResponseWriter, r *http.Request)
+	// Get a report by hash
+	// (GET /reports/{hash})
+	GetReport(w http.ResponseWriter, r *http.Request, hash string)
 	// Upload a report
 	// (POST /upload)
 	UploadReport(w http.ResponseWriter, r *http.Request)
@@ -82,6 +86,39 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.handler.GetReports(w, r)
+	}))
+
+	handler.ServeHTTP(cw, r.WithContext(ctx))
+}
+
+// GetReport operation middleware
+func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	cw := uhttp.NewResponseWriter(w,
+		uhttp.WithDefaultStatusCode(http.StatusOK),
+		uhttp.WithDefaultHeader("X-Request-ID", uhttp.RequestIDFromContext(ctx)),
+		uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
+	)
+
+	defer func() {
+		if siw.metricsMiddleware != nil {
+			siw.metricsMiddleware(cw, r)
+		}
+	}()
+
+	var err error
+
+	// ------------- Path parameter "hash" -------------
+	var hash string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hash", mux.Vars(r)["hash"], &hash, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "hash", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.handler.GetReport(w, r, hash)
 	}))
 
 	handler.ServeHTTP(cw, r.WithContext(ctx))
@@ -226,5 +263,6 @@ func RegisterUnauthedHandlers(router *mux.Router, si ServerInterface, opts ...Se
 	router.Use(uhttp.GenerateOrCopyRequestIDMux())
 
 	router.Methods(http.MethodGet).Path("/reports").Handler(wrapHandler(wrapper.GetReports))
+	router.Methods(http.MethodGet).Path("/reports/{hash}").Handler(wrapHandler(wrapper.GetReport))
 	router.Methods(http.MethodPost).Path("/upload").Handler(wrapHandler(wrapper.UploadReport))
 }

@@ -222,13 +222,13 @@ func parseResources(y *simpleyaml.Yaml) ([]*models.Resource, error) {
 
 		switch {
 		case m[stateSkipped] == trueStr:
-			res.Status = stateSkipped
+			res.Status = models.ResourceStatusSkipped
 		case m[stateChanged] == trueStr:
-			res.Status = stateChanged
+			res.Status = models.ResourceStatusChanged
 		case m[stateFailed] == trueStr:
-			res.Status = stateFailed
+			res.Status = models.ResourceStatusFailed
 		default:
-			res.Status = stateUnchanged
+			res.Status = models.ResourceStatusUnchanged
 		}
 
 		resources = append(resources, res)
