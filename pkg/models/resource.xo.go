@@ -213,7 +213,7 @@ func (m *Resource) Delete(db DB) error {
 //
 // Generated from primary key.
 func ResourceById(db DB, id int) (*Resource, error) {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_Resource"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_" + ResourceTableName + "_by_id"))
 	defer t.ObserveDuration()
 
 	const sqlstr = "SELECT `id`, `report_id`, `status`, `name`, `type`, `file`, `line` " +
