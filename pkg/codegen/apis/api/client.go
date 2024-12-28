@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 
+	externalRef1 "github.com/jacobbrewer1/uhttp/common"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -89,7 +90,7 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 	// GetReports request
-	GetReports(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetReports(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetReport request
 	GetReport(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -98,8 +99,8 @@ type ClientInterface interface {
 	UploadReportWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) GetReports(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetReportsRequest(c.Server)
+func (c *Client) GetReports(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReportsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func (c *Client) UploadReportWithBody(ctx context.Context, contentType string, b
 }
 
 // NewGetReportsRequest generates requests for GetReports
-func NewGetReportsRequest(server string) (*http.Request, error) {
+func NewGetReportsRequest(server string, params *GetReportsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -151,6 +152,124 @@ func NewGetReportsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.LastVal != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "last_val", runtime.ParamLocationQuery, *params.LastVal); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.LastId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "last_id", runtime.ParamLocationQuery, *params.LastId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.SortBy != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort_by", runtime.ParamLocationQuery, *params.SortBy); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.SortDir != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort_dir", runtime.ParamLocationQuery, *params.SortDir); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Host != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "host", runtime.ParamLocationQuery, *params.Host); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Environment != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "environment", runtime.ParamLocationQuery, *params.Environment); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -268,7 +387,7 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 	// GetReportsWithResponse request
-	GetReportsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReportsResponse, error)
+	GetReportsWithResponse(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*GetReportsResponse, error)
 
 	// GetReportWithResponse request
 	GetReportWithResponse(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*GetReportResponse, error)
@@ -281,9 +400,8 @@ type GetReportsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]ReportResponse
-	JSON500      *struct {
-		Message *string `json:"message,omitempty"`
-	}
+	JSON400      *externalRef1.Message
+	JSON500      *externalRef1.ErrorMessage
 }
 
 // Status returns HTTPResponse.Status
@@ -306,12 +424,9 @@ type GetReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ReportDetails
-	JSON404      *struct {
-		Message *string `json:"message,omitempty"`
-	}
-	JSON500 *struct {
-		Message *string `json:"message,omitempty"`
-	}
+	JSON400      *externalRef1.Message
+	JSON404      *externalRef1.Message
+	JSON500      *externalRef1.ErrorMessage
 }
 
 // Status returns HTTPResponse.Status
@@ -333,15 +448,9 @@ func (r GetReportResponse) StatusCode() int {
 type UploadReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *struct {
-		Message *string `json:"message,omitempty"`
-	}
-	JSON400 *struct {
-		Message *string `json:"message,omitempty"`
-	}
-	JSON500 *struct {
-		Message *string `json:"message,omitempty"`
-	}
+	JSON200      *externalRef1.Message
+	JSON400      *externalRef1.ErrorMessage
+	JSON500      *externalRef1.ErrorMessage
 }
 
 // Status returns HTTPResponse.Status
@@ -361,8 +470,8 @@ func (r UploadReportResponse) StatusCode() int {
 }
 
 // GetReportsWithResponse request returning *GetReportsResponse
-func (c *ClientWithResponses) GetReportsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReportsResponse, error) {
-	rsp, err := c.GetReports(ctx, reqEditors...)
+func (c *ClientWithResponses) GetReportsWithResponse(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*GetReportsResponse, error) {
+	rsp, err := c.GetReports(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -408,10 +517,15 @@ func ParseGetReportsResponse(rsp *http.Response) (*GetReportsResponse, error) {
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Message *string `json:"message,omitempty"`
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.Message
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
 		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -443,19 +557,22 @@ func ParseGetReportResponse(rsp *http.Response) (*GetReportResponse, error) {
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Message *string `json:"message,omitempty"`
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.Message
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
 		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef1.Message
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Message *string `json:"message,omitempty"`
-		}
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -481,27 +598,21 @@ func ParseUploadReportResponse(rsp *http.Response) (*UploadReportResponse, error
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			Message *string `json:"message,omitempty"`
-		}
+		var dest externalRef1.Message
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Message *string `json:"message,omitempty"`
-		}
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Message *string `json:"message,omitempty"`
-		}
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

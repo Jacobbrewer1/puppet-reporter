@@ -30,31 +30,19 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Report uploaded successfully
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
         '400':
           description: Bad Request
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Invalid file format
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: An error occurred while processing the report
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
 
   /reports:
     get:
@@ -62,6 +50,14 @@ paths:
       tags:
         - reports
       summary: Get all reports
+      parameters:
+        - $ref: '../../../../vendor/github.com/jacobbrewer1/pagefilter/common/common.yaml#/components/parameters/limit_param'
+        - $ref: '../../../../vendor/github.com/jacobbrewer1/pagefilter/common/common.yaml#/components/parameters/last_value'
+        - $ref: '../../../../vendor/github.com/jacobbrewer1/pagefilter/common/common.yaml#/components/parameters/last_id'
+        - $ref: '../../../../vendor/github.com/jacobbrewer1/pagefilter/common/common.yaml#/components/parameters/sort_by'
+        - $ref: '../../../../vendor/github.com/jacobbrewer1/pagefilter/common/common.yaml#/components/parameters/sort_direction'
+        - $ref: '#/components/parameters/query_host'
+        - $ref: '#/components/parameters/query_environment'
       responses:
         '200':
           description: OK
@@ -71,16 +67,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/report_response'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: An error occurred while fetching the reports
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
 
   /reports/{hash}:
     get:
@@ -102,28 +100,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/report_details'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
         '404':
           description: Not Found
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Report not found
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: An error occurred while fetching the report
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
 
 components:
+  parameters:
+    query_environment:
+      name: environment
+      in: query
+      description: Filter by environment
+      schema:
+        type: string
+    query_host:
+      name: host
+      in: query
+      description: Filter by host
+      schema:
+        type: string
+
   schemas:
     report_response:
       type: object
