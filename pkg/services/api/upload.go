@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +10,9 @@ import (
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
+	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 	"github.com/jacobbrewer1/uhttp"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +31,9 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileBody := new(api.UploadReportMultipartBody)
+	fileBody := &api.UploadReportMultipartBody{
+		File: new(openapi_types.File),
+	}
 	fileBody.File.InitFromBytes(bdy, defaultFileName)
 
 	bts, err := fileBody.File.Bytes()
@@ -48,7 +51,7 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existingRep, err := s.r.GetReportByHash(rep.Report.Hash)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, repo.ErrReportNotFound) {
 		l.Error("Error getting report by hash", slog.String(logging.KeyError, err.Error()))
 		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error getting report by hash", err)
 		return
