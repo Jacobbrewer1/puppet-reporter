@@ -102,6 +102,9 @@ jobs:
           chmod +x goschema
           mv goschema /usr/local/bin
 
+      - name: "deps"
+        run: make deps
+
       - name: "Run Code Generation"
         run: make codegen
 
