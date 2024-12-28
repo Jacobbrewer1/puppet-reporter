@@ -96,5 +96,11 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	go updateMetrics(rep)
+
 	uhttp.SendMessageWithStatus(w, http.StatusCreated, "Report saved")
+}
+
+func updateMetrics(rep *CompleteReport) {
+	totalReports.WithLabelValues(rep.Report.State, rep.Report.Environment).Inc()
 }
