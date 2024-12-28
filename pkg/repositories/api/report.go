@@ -95,5 +95,9 @@ func (r *repository) getReportsFilters(f *GetReportsFilters) *pagefilter.MultiFi
 		mf.Add(filters.NewReportsHostLike(*f.Host))
 	}
 
+	if f.State != nil {
+		mf.Add(filters.NewReportsStateLike(*f.State))
+	}
+
 	return mf
 }

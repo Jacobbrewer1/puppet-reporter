@@ -58,6 +58,7 @@ paths:
         - $ref: '../../../../vendor/github.com/jacobbrewer1/pagefilter/common/common.yaml#/components/parameters/sort_direction'
         - $ref: '#/components/parameters/query_host'
         - $ref: '#/components/parameters/query_environment'
+        - $ref: '#/components/parameters/query_state'
       responses:
         '200':
           description: OK
@@ -133,6 +134,12 @@ components:
       description: Filter by host
       schema:
         type: string
+    query_state:
+      name: status
+      in: query
+      description: Filter by status
+      schema:
+        $ref: '#/components/schemas/status'
 
   schemas:
     report_response:

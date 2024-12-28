@@ -178,6 +178,19 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// ------------- Optional query parameter "status" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"status",
+		r.URL.Query(),
+		&params.Status,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.handler.GetReports(w, r, params)
 	}))
