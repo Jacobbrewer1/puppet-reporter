@@ -218,7 +218,7 @@ func (m *Report) Delete(db DB) error {
 //
 // Generated from primary key.
 func ReportById(db DB, id int) (*Report, error) {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_Report"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_" + ReportTableName + "_by_id"))
 	defer t.ObserveDuration()
 
 	const sqlstr = "SELECT `id`, `hash`, `host`, `puppet_version`, `environment`, `state`, `executed_at`, `runtime`, `failed`, `changed`, `skipped`, `total` " +
@@ -238,7 +238,7 @@ func ReportById(db DB, id int) (*Report, error) {
 //
 // Generated from index 'report_hash_unique' of type 'unique'.
 func ReportByHash(db DB, hash string) (*Report, error) {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_" + ReportTableName))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_" + ReportTableName + "_by_hash"))
 	defer t.ObserveDuration()
 
 	const sqlstr = "SELECT `id`, `hash`, `host`, `puppet_version`, `environment`, `state`, `executed_at`, `runtime`, `failed`, `changed`, `skipped`, `total` " +

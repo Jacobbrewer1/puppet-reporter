@@ -208,7 +208,7 @@ func (m *LogMessage) Delete(db DB) error {
 //
 // Generated from primary key.
 func LogMessageById(db DB, id int) (*LogMessage, error) {
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("insert_LogMessage"))
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_" + LogMessageTableName + "_by_id"))
 	defer t.ObserveDuration()
 
 	const sqlstr = "SELECT `id`, `report_id`, `message` " +
