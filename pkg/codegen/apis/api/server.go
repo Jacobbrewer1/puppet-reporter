@@ -16,7 +16,7 @@ import (
 type ServerInterface interface {
 	// Get all reports
 	// (GET /reports)
-	GetReports(w http.ResponseWriter, r *http.Request)
+	GetReports(w http.ResponseWriter, r *http.Request, params *GetReportsParams)
 	// Get a report by hash
 	// (GET /reports/{hash})
 	GetReport(w http.ResponseWriter, r *http.Request, hash string)
@@ -84,8 +84,102 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		}
 	}()
 
+	// Parameter object where we will unmarshal all parameters from the context
+	params := new(GetReportsParams)
+
+	// ------------- Optional query parameter "limit" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"limit",
+		r.URL.Query(),
+		&params.Limit,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "last_val" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"last_val",
+		r.URL.Query(),
+		&params.LastVal,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "last_val", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "last_id" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"last_id",
+		r.URL.Query(),
+		&params.LastId,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "last_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "sort_by" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"sort_by",
+		r.URL.Query(),
+		&params.SortBy,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "sort_by", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "sort_dir" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"sort_dir",
+		r.URL.Query(),
+		&params.SortDir,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "sort_dir", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "host" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"host",
+		r.URL.Query(),
+		&params.Host,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "host", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "environment" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"environment",
+		r.URL.Query(),
+		&params.Environment,
+	); err != nil {
+		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "environment", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.handler.GetReports(w, r)
+		siw.handler.GetReports(w, r, params)
 	}))
 
 	handler.ServeHTTP(cw, r.WithContext(ctx))
@@ -106,13 +200,16 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 		}
 	}()
 
-	var err error
-
 	// ------------- Path parameter "hash" -------------
 	var hash string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "hash", mux.Vars(r)["hash"], &hash, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
+	if err := runtime.BindStyledParameterWithOptions(
+		"simple",
+		"hash",
+		mux.Vars(r)["hash"],
+		&hash,
+		runtime.BindStyledParameterOptions{Explode: false, Required: true},
+	); err != nil {
 		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "hash", Err: err})
 		return
 	}

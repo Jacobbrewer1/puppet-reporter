@@ -6,6 +6,7 @@ package api
 import (
 	"time"
 
+	externalRef0 "github.com/jacobbrewer1/pagefilter/common"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -61,6 +62,39 @@ const (
 	Status_SKIPPED   Status = "SKIPPED"
 	Status_UNCHANGED Status = "UNCHANGED"
 )
+
+// QueryEnvironment defines the model for query_environment.
+type QueryEnvironment = string
+
+// QueryHost defines the model for query_host.
+type QueryHost = string
+
+// GetReportsParams defines parameters for GetReports.
+type GetReportsParams struct {
+	// Limit Report type
+	Limit *externalRef0.LimitParam `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// LastVal Pagination details, last value of the sort column on the previous page.
+	LastVal *externalRef0.LastValue `form:"last_val,omitempty" json:"last_val,omitempty"`
+
+	// LastId Pagination details, last value of the id column on the previous page.
+	LastId *externalRef0.LastId `form:"last_id,omitempty" json:"last_id,omitempty"`
+
+	// SortBy Pagination details, sort column, if empty uses the id column.
+	SortBy *externalRef0.SortBy `form:"sort_by,omitempty" json:"sort_by,omitempty"`
+
+	// SortDir Pagination details, sorting order.
+	SortDir *GetReportsParamsSortDir `form:"sort_dir,omitempty" json:"sort_dir,omitempty"`
+
+	// Host Filter by host
+	Host *QueryHost `form:"host,omitempty" json:"host,omitempty"`
+
+	// Environment Filter by environment
+	Environment *QueryEnvironment `form:"environment,omitempty" json:"environment,omitempty"`
+}
+
+// GetReportsParamsSortDir defines parameters for GetReports.
+type GetReportsParamsSortDir string
 
 // UploadReportMultipartBody defines parameters for UploadReport.
 type UploadReportMultipartBody struct {

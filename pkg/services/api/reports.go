@@ -14,7 +14,7 @@ import (
 	"github.com/jacobbrewer1/uhttp"
 )
 
-func (s *service) GetReports(w http.ResponseWriter, r *http.Request) {
+func (s *service) GetReports(w http.ResponseWriter, r *http.Request, params *api.GetReportsParams) {
 	l := logging.LoggerFromRequest(r)
 
 	paginationDetails, err := pagefilter.DetailsFromRequest(r)
@@ -24,7 +24,7 @@ func (s *service) GetReports(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filts, err := s.getReportsFilters(r)
+	filts, err := s.getReportsFilters(params)
 	if err != nil {
 		l.Error("Failed to parse filters", slog.String(logging.KeyError, err.Error()))
 		uhttp.SendErrorMessageWithStatus(w, http.StatusBadRequest, "failed to parse filters", err)
@@ -62,8 +62,19 @@ func (s *service) GetReports(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *service) getReportsFilters(r *http.Request) (*repo.GetReportsFilters, error) {
+func (s *service) getReportsFilters(params *api.GetReportsParams) (*repo.GetReportsFilters, error) {
 	filters := new(repo.GetReportsFilters)
+	if params == nil {
+		return filters, nil
+	}
+
+	if params.Environment != nil {
+		filters.Environment = params.Environment
+	}
+
+	if params.Host != nil {
+		filters.Host = params.Host
+	}
 
 	return filters, nil
 }

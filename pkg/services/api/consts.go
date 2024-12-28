@@ -17,10 +17,11 @@ const (
 	resourceKeyLine         = "LINE"
 	resourceKeyTitle        = "TITLE"
 
-	stateSkipped   = "SKIPPED"
-	stateFailed    = "FAILED"
-	stateChanged   = "CHANGED"
-	stateUnchanged = "UNCHANGED"
+	stateSkipped = "SKIPPED"
+	stateFailed  = "FAILED"
+	stateChanged = "CHANGED"
 
 	unknownLineNum = -1
+
+	defaultFileName = "report.yaml"
 )

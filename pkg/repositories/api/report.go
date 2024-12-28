@@ -7,6 +7,7 @@ import (
 
 	"github.com/jacobbrewer1/pagefilter"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api/filters"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -80,8 +81,19 @@ func (r *repository) GetReports(paginationDetails *pagefilter.PaginatorDetails, 
 	}, nil
 }
 
-func (r *repository) getReportsFilters(filters *GetReportsFilters) *pagefilter.MultiFilter {
+func (r *repository) getReportsFilters(f *GetReportsFilters) *pagefilter.MultiFilter {
 	mf := pagefilter.NewMultiFilter()
+	if f == nil {
+		return mf
+	}
+
+	if f.Environment != nil {
+		mf.Add(filters.NewReportsEnvironmentLike(*f.Environment))
+	}
+
+	if f.Host != nil {
+		mf.Add(filters.NewReportsHostLike(*f.Host))
+	}
 
 	return mf
 }
