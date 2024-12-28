@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
@@ -61,8 +62,6 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.Debug(fmt.Sprintf("Parsed puppet report: %v", rep))
-
 	if err := s.r.SaveReport(rep.Report); err != nil {
 		l.Error("Error saving report", slog.String(logging.KeyError, err.Error()))
 		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error saving report", err)
@@ -105,5 +104,5 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateMetrics(rep *CompleteReport) {
-	totalReports.WithLabelValues(rep.Report.State, rep.Report.Environment).Inc()
+	totalReports.WithLabelValues(strings.ToLower(rep.Report.State), strings.ToLower(rep.Report.Environment)).Inc()
 }
