@@ -69,8 +69,8 @@ type QueryEnvironment = string
 // QueryHost defines the model for query_host.
 type QueryHost = string
 
-// QueryStatus defines the model for query_status.
-type QueryStatus = Status
+// QueryState defines the model for query_state.
+type QueryState = Status
 
 // GetReportsParams defines parameters for GetReports.
 type GetReportsParams struct {
@@ -96,7 +96,7 @@ type GetReportsParams struct {
 	Environment *QueryEnvironment `form:"environment,omitempty" json:"environment,omitempty"`
 
 	// Status Filter by status
-	Status *QueryStatus `form:"status,omitempty" json:"status,omitempty"`
+	Status *QueryState `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // GetReportsParamsSortDir defines parameters for GetReports.

@@ -19,5 +19,5 @@ func NewRepository(db *repositories.Database) Repository {
 type GetReportsFilters struct {
 	Host        *string
 	Environment *string
-	Status      *string
+	State       *string
 }

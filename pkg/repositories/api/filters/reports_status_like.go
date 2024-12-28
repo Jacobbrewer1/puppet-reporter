@@ -2,16 +2,16 @@ package filters
 
 import "github.com/jacobbrewer1/pagefilter"
 
-type reportsStatusLike struct {
-	status string
+type reportsStateLike struct {
+	state string
 }
 
-func NewReportsStatusLike(status string) pagefilter.Wherer {
-	return &reportsStatusLike{
-		status: status,
+func NewReportsStateLike(state string) pagefilter.Wherer {
+	return &reportsStateLike{
+		state: state,
 	}
 }
 
-func (r *reportsStatusLike) Where() (string, []any) {
-	return "t.state LIKE ?", []any{"%" + r.status + "%"}
+func (r *reportsStateLike) Where() (string, []any) {
+	return "t.state LIKE ?", []any{"%" + r.state + "%"}
 }

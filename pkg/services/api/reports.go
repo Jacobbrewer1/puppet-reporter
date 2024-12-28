@@ -77,7 +77,7 @@ func (s *service) getReportsFilters(params *api.GetReportsParams) (*repo.GetRepo
 	}
 
 	if params.Status != nil {
-		filters.Status = params.Status
+		filters.State = params.Status
 	}
 
 	return filters, nil
