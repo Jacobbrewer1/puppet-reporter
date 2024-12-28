@@ -1,17 +1,19 @@
 package api
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
+	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 	"github.com/jacobbrewer1/uhttp"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +32,9 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileBody := new(api.UploadReportMultipartBody)
+	fileBody := &api.UploadReportMultipartBody{
+		File: new(openapi_types.File),
+	}
 	fileBody.File.InitFromBytes(bdy, defaultFileName)
 
 	bts, err := fileBody.File.Bytes()
@@ -48,7 +52,7 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existingRep, err := s.r.GetReportByHash(rep.Report.Hash)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, repo.ErrReportNotFound) {
 		l.Error("Error getting report by hash", slog.String(logging.KeyError, err.Error()))
 		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error getting report by hash", err)
 		return
@@ -57,8 +61,6 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		uhttp.SendMessageWithStatus(w, http.StatusConflict, "Report already exists")
 		return
 	}
-
-	l.Debug(fmt.Sprintf("Parsed puppet report: %v", rep))
 
 	if err := s.r.SaveReport(rep.Report); err != nil {
 		l.Error("Error saving report", slog.String(logging.KeyError, err.Error()))
@@ -96,5 +98,11 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	go updateMetrics(rep)
+
 	uhttp.SendMessageWithStatus(w, http.StatusCreated, "Report saved")
+}
+
+func updateMetrics(rep *CompleteReport) {
+	totalReports.WithLabelValues(strings.ToLower(rep.Report.State), strings.ToLower(rep.Report.Environment)).Inc()
 }
