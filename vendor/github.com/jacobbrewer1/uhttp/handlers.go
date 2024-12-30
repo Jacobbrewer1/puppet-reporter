@@ -32,7 +32,7 @@ func MethodNotAllowedHandler() http.HandlerFunc {
 		if !ok {
 			rw = NewResponseWriter(w,
 				WithDefaultStatusCode(http.StatusOK),
-				WithDefaultHeader("X-Request-ID", RequestIDFromContext(GenerateOrCopyRequestID(r.Context(), r))),
+				WithDefaultHeader(HeaderRequestID, RequestIDFromContext(GenerateOrCopyRequestID(r.Context(), r))),
 				WithDefaultHeader(HeaderContentType, ContentTypeJSON),
 			)
 		}
@@ -52,7 +52,7 @@ func UnauthorizedHandler() http.HandlerFunc {
 		if !ok {
 			rw = NewResponseWriter(w,
 				WithDefaultStatusCode(http.StatusOK),
-				WithDefaultHeader("X-Request-ID", RequestIDFromContext(GenerateOrCopyRequestID(r.Context(), r))),
+				WithDefaultHeader(HeaderRequestID, RequestIDFromContext(GenerateOrCopyRequestID(r.Context(), r))),
 				WithDefaultHeader(HeaderContentType, ContentTypeJSON),
 			)
 		}
@@ -70,7 +70,7 @@ func GenericErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	if !ok {
 		rw = NewResponseWriter(w,
 			WithDefaultStatusCode(http.StatusOK),
-			WithDefaultHeader("X-Request-ID", RequestIDFromContext(GenerateOrCopyRequestID(r.Context(), r))),
+			WithDefaultHeader(HeaderRequestID, RequestIDFromContext(GenerateOrCopyRequestID(r.Context(), r))),
 			WithDefaultHeader(HeaderContentType, ContentTypeJSON),
 		)
 	}
