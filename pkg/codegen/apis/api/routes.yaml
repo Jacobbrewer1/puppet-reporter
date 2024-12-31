@@ -135,7 +135,7 @@ components:
       schema:
         type: string
     query_state:
-      name: status
+      name: state
       in: query
       description: Filter by status
       schema:
