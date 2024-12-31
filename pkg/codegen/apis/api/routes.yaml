@@ -135,7 +135,7 @@ components:
       schema:
         type: string
     query_state:
-      name: status
+      name: state
       in: query
       description: Filter by status
       schema:
@@ -160,6 +160,10 @@ components:
     report:
       type: object
       properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
         hash:
           type: string
           example: 3b0e8b4e1

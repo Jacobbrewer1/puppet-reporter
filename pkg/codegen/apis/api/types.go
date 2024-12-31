@@ -21,6 +21,7 @@ type Report struct {
 	ExecutedAt     *time.Time `json:"executed_at,omitempty"`
 	Hash           *string    `json:"hash,omitempty"`
 	Host           *string    `json:"host,omitempty"`
+	Id             *int64     `json:"id,omitempty"`
 	PuppetVersion  *float32   `json:"puppet_version,omitempty"`
 	RuntimeSeconds *int64     `json:"runtime_seconds,omitempty"`
 	Status         *string    `json:"status,omitempty"`
@@ -95,8 +96,8 @@ type GetReportsParams struct {
 	// Environment Filter by environment
 	Environment *QueryEnvironment `form:"environment,omitempty" json:"environment,omitempty"`
 
-	// Status Filter by status
-	Status *QueryState `form:"status,omitempty" json:"status,omitempty"`
+	// State Filter by status
+	State *QueryState `form:"state,omitempty" json:"state,omitempty"`
 }
 
 // GetReportsParamsSortDir defines parameters for GetReports.

@@ -40,7 +40,7 @@ func (s *service) GetReports(w http.ResponseWriter, r *http.Request, params *api
 				Total: 0,
 			}
 		default:
-			slog.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
+			l.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
 			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "error getting reports", err)
 			return
 		}
@@ -76,8 +76,8 @@ func (s *service) getReportsFilters(params *api.GetReportsParams) (*repo.GetRepo
 		filters.Host = params.Host
 	}
 
-	if params.Status != nil {
-		filters.State = params.Status
+	if params.State != nil {
+		filters.State = params.State
 	}
 
 	return filters, nil
@@ -89,6 +89,7 @@ func (s *service) modelAsApiReport(report *models.Report) *api.Report {
 		ExecutedAt:     &report.ExecutedAt,
 		Hash:           &report.Hash,
 		Host:           &report.Host,
+		Id:             utils.Ptr(int64(report.Id)),
 		PuppetVersion:  utils.Ptr(float32(report.PuppetVersion)),
 		RuntimeSeconds: utils.Ptr(int64(report.Runtime)),
 		Status:         &report.State,
