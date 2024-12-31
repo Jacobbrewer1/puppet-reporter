@@ -9,6 +9,7 @@ const (
 	MsgBadRequest       = "Bad request"
 
 	HeaderContentType = "Content-Type"
+	HeaderRequestID   = "X-Request-ID"
 
 	ContentTypeJSON = "application/json"
 )

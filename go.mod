@@ -11,7 +11,7 @@ require (
 	github.com/jacobbrewer1/goschema v0.0.13
 	github.com/jacobbrewer1/pagefilter v0.1.5
 	github.com/jacobbrewer1/patcher v0.1.13
-	github.com/jacobbrewer1/uhttp v0.0.4
+	github.com/jacobbrewer1/uhttp v0.0.5
 	github.com/jacobbrewer1/vaulty v0.1.6
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/oapi-codegen/runtime v1.1.1
@@ -83,7 +83,7 @@ require (
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/time v0.7.0 // indirect
+	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
