@@ -464,7 +464,7 @@ func (r GetReportResponse) StatusCode() int {
 type UploadReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *externalRef1.Message
+	JSON200      *ReportDetails
 	JSON400      *externalRef1.ErrorMessage
 	JSON500      *externalRef1.ErrorMessage
 }
@@ -614,7 +614,7 @@ func ParseUploadReportResponse(rsp *http.Response) (*UploadReportResponse, error
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest externalRef1.Message
+		var dest ReportDetails
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

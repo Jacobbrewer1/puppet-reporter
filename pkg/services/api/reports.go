@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -102,51 +103,21 @@ func (s *service) modelAsApiReport(report *models.Report) *api.Report {
 func (s *service) GetReport(w http.ResponseWriter, r *http.Request, hash string) {
 	l := logging.LoggerFromRequest(r)
 
-	report, err := s.r.GetReportByHash(hash)
+	report, err := s.reportDetailsByHash(hash)
 	if err != nil {
 		switch {
 		case errors.Is(err, repo.ErrReportNotFound):
+			l.Error("Report not found", slog.String(logging.KeyError, err.Error()))
 			uhttp.SendErrorMessageWithStatus(w, http.StatusNotFound, "report not found", err)
+			return
 		default:
-			l.Error("Error getting report", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "error getting report", err)
+			l.Error("Failed to get report details", slog.String(logging.KeyError, err.Error()))
+			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "failed to get report details", err)
+			return
 		}
-		return
 	}
 
-	reportResp := s.modelAsApiReport(report)
-
-	resources, err := s.r.GetResourcesByReportID(report.Id)
-	if err != nil {
-		l.Error("Error getting resources", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "error getting resources", err)
-		return
-	}
-
-	resourceResp := make([]api.Resource, len(resources))
-	for i, resource := range resources {
-		resourceResp[i] = *s.modelAsApiResource(resource)
-	}
-
-	logs, err := s.r.GetLogsByReportID(report.Id)
-	if err != nil {
-		l.Error("Error getting logs", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "error getting logs", err)
-		return
-	}
-
-	logResp := make([]api.LogMessage, len(logs))
-	for i, log := range logs {
-		logResp[i] = *s.modelAsApiLogMessage(log)
-	}
-
-	resp := &api.ReportDetails{
-		Logs:      logResp,
-		Report:    *reportResp,
-		Resources: resourceResp,
-	}
-
-	if err := uhttp.EncodeJSON(w, http.StatusOK, resp); err != nil {
+	if err := uhttp.EncodeJSON(w, http.StatusOK, report); err != nil {
 		l.Error("Failed to encode response", slog.String(logging.KeyError, err.Error()))
 		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "failed to encode response", err)
 	}
@@ -166,4 +137,46 @@ func (s *service) modelAsApiResource(resource *models.Resource) *api.Resource {
 		Status: api.Status(resource.Status),
 		Type:   resource.Type,
 	}
+}
+
+func (s *service) reportDetailsByHash(hash string) (*api.ReportDetails, error) {
+	report, err := s.r.GetReportByHash(hash)
+	if err != nil {
+		switch {
+		case errors.Is(err, repo.ErrReportNotFound):
+			return nil, fmt.Errorf("report not found: %w", err)
+		default:
+			return nil, fmt.Errorf("failed to get report: %w", err)
+		}
+	}
+
+	reportResp := s.modelAsApiReport(report)
+
+	resources, err := s.r.GetResourcesByReportID(report.Id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resources: %w", err)
+	}
+
+	resourceResp := make([]api.Resource, len(resources))
+	for i, resource := range resources {
+		resourceResp[i] = *s.modelAsApiResource(resource)
+	}
+
+	logs, err := s.r.GetLogsByReportID(report.Id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get logs: %w", err)
+	}
+
+	logResp := make([]api.LogMessage, len(logs))
+	for i, log := range logs {
+		logResp[i] = *s.modelAsApiLogMessage(log)
+	}
+
+	resp := &api.ReportDetails{
+		Logs:      logResp,
+		Report:    *reportResp,
+		Resources: resourceResp,
+	}
+
+	return resp, nil
 }

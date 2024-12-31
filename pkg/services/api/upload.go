@@ -100,7 +100,24 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 
 	go updateMetrics(rep)
 
-	uhttp.SendMessageWithStatus(w, http.StatusCreated, "Report saved")
+	respReport := s.modelAsApiReport(rep.Report)
+	respLogs := make([]api.LogMessage, len(rep.Logs))
+	for i, log := range rep.Logs {
+		respLogs[i] = *s.modelAsApiLogMessage(log)
+	}
+
+	respResources := make([]api.Resource, len(rep.Resources))
+	for i, resource := range rep.Resources {
+		respResources[i] = *s.modelAsApiResource(resource)
+	}
+
+	respReportDetails := &api.ReportDetails{
+		Logs:      respLogs,
+		Report:    *respReport,
+		Resources: respResources,
+	}
+
+	uhttp.MustEncode(w, http.StatusCreated, respReportDetails)
 }
 
 func updateMetrics(rep *CompleteReport) {
