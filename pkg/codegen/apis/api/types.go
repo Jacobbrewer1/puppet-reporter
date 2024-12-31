@@ -96,8 +96,8 @@ type GetReportsParams struct {
 	// Environment Filter by environment
 	Environment *QueryEnvironment `form:"environment,omitempty" json:"environment,omitempty"`
 
-	// Status Filter by status
-	Status *QueryState `form:"status,omitempty" json:"status,omitempty"`
+	// State Filter by status
+	State *QueryState `form:"state,omitempty" json:"state,omitempty"`
 }
 
 // GetReportsParamsSortDir defines parameters for GetReports.
