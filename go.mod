@@ -19,7 +19,7 @@ require (
 	github.com/smallfish/simpleyaml v0.1.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.50.1
+	github.com/vektra/mockery/v2 v2.50.2
 )
 
 require (
