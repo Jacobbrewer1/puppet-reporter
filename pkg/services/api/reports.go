@@ -10,7 +10,6 @@ import (
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
-	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
 	"github.com/jacobbrewer1/uhttp"
 )
 
@@ -85,18 +84,18 @@ func (s *service) getReportsFilters(params *api.GetReportsParams) (*repo.GetRepo
 
 func (s *service) modelAsApiReport(report *models.Report) *api.Report {
 	return &api.Report{
-		Environment:    &report.Environment,
-		ExecutedAt:     &report.ExecutedAt,
-		Hash:           &report.Hash,
-		Host:           &report.Host,
-		Id:             utils.Ptr(int64(report.Id)),
-		PuppetVersion:  utils.Ptr(float32(report.PuppetVersion)),
-		RuntimeSeconds: utils.Ptr(int64(report.Runtime)),
-		Status:         &report.State,
-		TotalChanged:   utils.Ptr(int64(report.Changed)),
-		TotalFailed:    utils.Ptr(int64(report.Failed)),
-		TotalResources: utils.Ptr(int64(report.Total)),
-		TotalSkipped:   utils.Ptr(int64(report.Skipped)),
+		Environment:    report.Environment,
+		ExecutedAt:     report.ExecutedAt,
+		Hash:           report.Hash,
+		Host:           report.Host,
+		Id:             int64(report.Id),
+		PuppetVersion:  float32(report.PuppetVersion),
+		RuntimeSeconds: int64(report.Runtime),
+		Status:         report.State,
+		TotalChanged:   int64(report.Changed),
+		TotalFailed:    int64(report.Failed),
+		TotalResources: int64(report.Total),
+		TotalSkipped:   int64(report.Skipped),
 	}
 }
 
@@ -142,9 +141,9 @@ func (s *service) GetReport(w http.ResponseWriter, r *http.Request, hash string)
 	}
 
 	resp := &api.ReportDetails{
-		Logs:      &logResp,
-		Report:    reportResp,
-		Resources: &resourceResp,
+		Logs:      logResp,
+		Report:    *reportResp,
+		Resources: resourceResp,
 	}
 
 	if err := uhttp.EncodeJSON(w, http.StatusOK, resp); err != nil {
@@ -155,16 +154,16 @@ func (s *service) GetReport(w http.ResponseWriter, r *http.Request, hash string)
 
 func (s *service) modelAsApiLogMessage(log *models.LogMessage) *api.LogMessage {
 	return &api.LogMessage{
-		Message: &log.Message,
+		Message: log.Message,
 	}
 }
 
 func (s *service) modelAsApiResource(resource *models.Resource) *api.Resource {
 	return &api.Resource{
-		File:   &resource.File,
-		Line:   utils.Ptr(int64(resource.Line)),
-		Name:   &resource.Name,
-		Status: (*api.Status)(&resource.Status),
-		Type:   &resource.Type,
+		File:   resource.File,
+		Line:   int64(resource.Line),
+		Name:   resource.Name,
+		Status: api.Status(resource.Status),
+		Type:   resource.Type,
 	}
 }

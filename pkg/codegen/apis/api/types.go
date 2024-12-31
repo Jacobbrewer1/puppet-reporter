@@ -12,30 +12,30 @@ import (
 
 // LogMessage defines the model for log_message.
 type LogMessage struct {
-	Message *string `json:"message,omitempty"`
+	Message string `json:"message"`
 }
 
 // Report defines the model for report.
 type Report struct {
-	Environment    *string    `json:"environment,omitempty"`
-	ExecutedAt     *time.Time `json:"executed_at,omitempty"`
-	Hash           *string    `json:"hash,omitempty"`
-	Host           *string    `json:"host,omitempty"`
-	Id             *int64     `json:"id,omitempty"`
-	PuppetVersion  *float32   `json:"puppet_version,omitempty"`
-	RuntimeSeconds *int64     `json:"runtime_seconds,omitempty"`
-	Status         *string    `json:"status,omitempty"`
-	TotalChanged   *int64     `json:"total_changed,omitempty"`
-	TotalFailed    *int64     `json:"total_failed,omitempty"`
-	TotalResources *int64     `json:"total_resources,omitempty"`
-	TotalSkipped   *int64     `json:"total_skipped,omitempty"`
+	Environment    string    `json:"environment"`
+	ExecutedAt     time.Time `json:"executed_at"`
+	Hash           string    `json:"hash"`
+	Host           string    `json:"host"`
+	Id             int64     `json:"id"`
+	PuppetVersion  float32   `json:"puppet_version"`
+	RuntimeSeconds int64     `json:"runtime_seconds"`
+	Status         string    `json:"status"`
+	TotalChanged   int64     `json:"total_changed"`
+	TotalFailed    int64     `json:"total_failed"`
+	TotalResources int64     `json:"total_resources"`
+	TotalSkipped   int64     `json:"total_skipped"`
 }
 
 // ReportDetails defines the model for report_details.
 type ReportDetails struct {
-	Logs      *[]LogMessage `json:"logs,omitempty"`
-	Report    *Report       `json:"report,omitempty"`
-	Resources *[]Resource   `json:"resources,omitempty"`
+	Logs      []LogMessage `json:"logs"`
+	Report    Report       `json:"report"`
+	Resources []Resource   `json:"resources"`
 }
 
 // ReportResponse defines the model for report_response.
@@ -46,11 +46,11 @@ type ReportResponse struct {
 
 // Resource defines the model for resource.
 type Resource struct {
-	File   *string `json:"file,omitempty"`
-	Line   *int64  `json:"line,omitempty"`
-	Name   *string `json:"name,omitempty"`
-	Status *Status `json:"status,omitempty"`
-	Type   *string `json:"type,omitempty"`
+	File   string `json:"file"`
+	Line   int64  `json:"line"`
+	Name   string `json:"name"`
+	Status Status `json:"status"`
+	Type   string `json:"type"`
 }
 
 // Status defines the model for status.

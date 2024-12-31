@@ -159,6 +159,19 @@ components:
 
     report:
       type: object
+      required:
+        - id
+        - hash
+        - host
+        - puppet_version
+        - environment
+        - status
+        - executed_at
+        - runtime_seconds
+        - total_failed
+        - total_changed
+        - total_skipped
+        - total_resources
       properties:
         id:
           type: integer
@@ -207,6 +220,10 @@ components:
 
     report_details:
       type: object
+      required:
+        - report
+        - resources
+        - logs
       properties:
         report:
           $ref: '#/components/schemas/report'
@@ -221,6 +238,12 @@ components:
 
     resource:
       type: object
+      required:
+        - status
+        - name
+        - type
+        - file
+        - line
       properties:
         status:
           $ref: '#/components/schemas/status'
@@ -248,6 +271,8 @@ components:
 
     log_message:
       type: object
+      required:
+        - message
       properties:
         message:
           type: string
