@@ -222,7 +222,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(200)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+		siw.errorHandlerFunc(cw, ctx, err)
 		return
 	}
 }
@@ -274,7 +274,7 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(200)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+		siw.errorHandlerFunc(cw, ctx, err)
 		return
 	}
 }
@@ -324,7 +324,7 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 	w.WriteHeader(200)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+		siw.errorHandlerFunc(cw, ctx, err)
 		return
 	}
 }

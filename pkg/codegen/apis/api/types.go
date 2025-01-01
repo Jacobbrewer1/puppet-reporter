@@ -4,19 +4,23 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"time"
 
 	externalRef0 "github.com/jacobbrewer1/pagefilter/common"
+	"github.com/jacobbrewer1/uhttp"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // LogMessage defines the model for log_message.
-type LogMessage struct {
+type LogMessage = struct {
 	Message string `json:"message"`
 }
 
 // Report defines the model for report.
-type Report struct {
+type Report = struct {
 	Environment    string    `json:"environment"`
 	ExecutedAt     time.Time `json:"executed_at"`
 	Hash           string    `json:"hash"`
@@ -32,20 +36,20 @@ type Report struct {
 }
 
 // ReportDetails defines the model for report_details.
-type ReportDetails struct {
+type ReportDetails = struct {
 	Logs      []LogMessage `json:"logs"`
 	Report    Report       `json:"report"`
 	Resources []Resource   `json:"resources"`
 }
 
 // ReportResponse defines the model for report_response.
-type ReportResponse struct {
+type ReportResponse = struct {
 	Reports []Report `json:"reports"`
 	Total   int64    `json:"total"`
 }
 
 // Resource defines the model for resource.
-type Resource struct {
+type Resource = struct {
 	File   string `json:"file"`
 	Line   int64  `json:"line"`
 	Name   string `json:"name"`
@@ -54,7 +58,7 @@ type Resource struct {
 }
 
 // Status defines the model for status.
-type Status = string
+type Status string
 
 // List of Status
 const (
@@ -63,6 +67,48 @@ const (
 	Status_SKIPPED   Status = "SKIPPED"
 	Status_UNCHANGED Status = "UNCHANGED"
 )
+
+func (e *Status) IsValid() bool {
+	if e == nil {
+		return false
+	}
+
+	switch *e {
+	case Status_CHANGED:
+		return true
+	case Status_FAILED:
+		return true
+	case Status_SKIPPED:
+		return true
+	case Status_UNCHANGED:
+		return true
+	default:
+		return false
+	}
+}
+
+func (e *Status) MarshalJSON() ([]byte, error) {
+	if !e.IsValid() {
+		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("%s is not a valid Status", *e))
+	}
+
+	return json.Marshal(string(*e))
+}
+
+func (e *Status) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	e2 := Status(s)
+	if !e2.IsValid() {
+		return uhttp.NewHTTPError(http.StatusBadRequest, fmt.Errorf("%s is not a valid Status", s))
+	}
+
+	*e = e2
+	return nil
+}
 
 // QueryEnvironment defines the model for query_environment.
 type QueryEnvironment = string
