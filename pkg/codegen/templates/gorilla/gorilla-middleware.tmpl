@@ -305,7 +305,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   {{ end -}}
   {{- end }}
   if err != nil {
-    l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+    siw.errorHandlerFunc(cw, ctx, err)
     return
   }
 }

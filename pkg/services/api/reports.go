@@ -10,6 +10,7 @@ import (
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
 	"github.com/jacobbrewer1/uhttp"
 )
 
@@ -65,7 +66,7 @@ func (s *service) getReportsFilters(params *api.GetReportsParams) (*repo.GetRepo
 	}
 
 	if params.State != nil {
-		filters.State = params.State
+		filters.State = utils.Ptr(string(*params.State))
 	}
 
 	return filters, nil
