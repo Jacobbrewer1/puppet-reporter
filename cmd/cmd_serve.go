@@ -150,7 +150,6 @@ func (s *serveCmd) setup(ctx context.Context, r *mux.Router) (err error) {
 		r,
 		service,
 		api.WithMetricsMiddleware(metricsMiddleware),
-		api.WithErrorHandlerFunc(uhttp.GenericErrorHandler),
 	)
 
 	return nil

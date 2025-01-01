@@ -3,69 +3,36 @@ package api
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
-	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 	"github.com/jacobbrewer1/uhttp"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
-	l := logging.LoggerFromRequest(r)
-
-	if r.Body == http.NoBody {
-		l.Debug("No body in request")
-		uhttp.SendMessageWithStatus(w, http.StatusBadRequest, "No body in request")
-		return
-	}
-
-	bdy, err := io.ReadAll(r.Body)
+func (s *service) UploadReport(l *slog.Logger, r *http.Request, body0 api.UploadReportJSONBody) (*api.ReportDetails, error) {
+	bts, err := body0.File.Bytes()
 	if err != nil {
-		l.Error("Error reading body", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error reading body", err)
-		return
-	}
-
-	fileBody := &api.UploadReportMultipartBody{
-		File: new(openapi_types.File),
-	}
-	fileBody.File.InitFromBytes(bdy, defaultFileName)
-
-	bts, err := fileBody.File.Bytes()
-	if err != nil {
-		l.Error("Error reading file", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error reading file", err)
-		return
+		return nil, uhttp.NewHTTPError(http.StatusBadRequest, err, "error reading file")
 	}
 
 	rep, err := parsePuppetReport(bts)
 	if err != nil {
-		l.Error("Error parsing puppet report", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error parsing puppet report", fmt.Errorf("error parsing puppet report: %w", err))
-		return
+		return nil, uhttp.NewHTTPError(http.StatusBadRequest, err, "error parsing report")
 	}
 
 	existingRep, err := s.r.GetReportByHash(rep.Report.Hash)
 	if err != nil && !errors.Is(err, repo.ErrReportNotFound) {
-		l.Error("Error getting report by hash", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error getting report by hash", err)
-		return
+		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "error getting report")
 	} else if existingRep != nil {
-		l.Debug("Report already exists", slog.String("hash", rep.Report.Hash))
-		uhttp.SendMessageWithStatus(w, http.StatusConflict, "Report already exists")
-		return
+		return nil, uhttp.NewHTTPError(http.StatusConflict, fmt.Errorf("report with hash %s already exists", rep.Report.Hash), "report already exists")
 	}
 
 	if err := s.r.SaveReport(rep.Report); err != nil {
-		l.Error("Error saving report", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error saving report", err)
-		return
+		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "error saving report")
 	}
 
 	wg := new(sync.WaitGroup)
@@ -87,15 +54,11 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	if err := s.r.SaveResources(rep.Resources); err != nil {
-		l.Error("Error saving resources", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error saving resources", err)
-		return
+		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "error saving resources")
 	}
 
 	if err := s.r.SaveLogs(rep.Logs); err != nil {
-		l.Error("Error saving logs", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error saving logs", err)
-		return
+		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "error saving logs")
 	}
 
 	go updateMetrics(rep)
@@ -117,7 +80,7 @@ func (s *service) UploadReport(w http.ResponseWriter, r *http.Request) {
 		Resources: respResources,
 	}
 
-	uhttp.MustEncode(w, http.StatusCreated, respReportDetails)
+	return respReportDetails, nil
 }
 
 func updateMetrics(rep *CompleteReport) {

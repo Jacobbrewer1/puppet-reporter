@@ -1,6 +1,10 @@
-type RateLimiterFunc = func(http.ResponseWriter, *http.Request) error
+const (
+    loggingKeyError = "error"
+)
+
+type RateLimiterFunc = func(http.ResponseWriter, context.Context) error
 type MetricsMiddlewareFunc = http.HandlerFunc
-type ErrorHandlerFunc = func(http.ResponseWriter, *http.Request, error)
+type ErrorHandlerFunc = func(http.ResponseWriter, context.Context, error)
 
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
@@ -43,9 +47,17 @@ func WithMetricsMiddleware(middleware MetricsMiddlewareFunc) ServerOption {
 type ServerOption func(s *ServerInterfaceWrapper)
 
 {{range .}}{{$opid := .OperationId}}
+{{- $ret := "[]byte" -}}
+{{- $method := .Method | lower }}
+{{- if (eq $method "delete") }}
+{{- $ret = "*mhttp.ResourceDelete" -}}
+{{- end }}
+{{- $form := "" -}}
 
 // {{$opid}} operation middleware
 func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Request) {
+  l := logging.LoggerFromRequest(r)
+
   ctx := r.Context()
   cw := uhttp.NewResponseWriter(w,
     uhttp.WithDefaultStatusCode(http.StatusOK),
@@ -67,7 +79,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   {{if .IsJson}}
   err = json.Unmarshal([]byte(mux.Vars(r)["{{.ParamName}}"]), &{{$varName}})
   if err != nil {
-    siw.errorHandlerFunc(cw, r, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
+    siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
     return
   }
   {{end}}
@@ -79,7 +91,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
      &{{$varName}},
      runtime.BindStyledParameterOptions{Explode: {{.Explode}}, Required: {{.Required}}},
   ); err != nil {
-    siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
+    siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
     return
   }
   {{end}}
@@ -88,7 +100,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
 
   {{if .RequiresParamObject}}
     // Parameter object where we will unmarshal all parameters from the context
-    params := new({{.OperationId}}Params)
+    var params {{.OperationId}}Params
 
     {{range $paramIdx, $param := .QueryParams}}
       {{- if (or (or .Required .IsPassThrough) (or .IsJson .IsStyled)) -}}
@@ -104,14 +116,14 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
         {{if .IsJson}}
           value := new({{.TypeDef}})
           if err := json.Unmarshal([]byte(paramValue), value); err != nil {
-            siw.errorHandlerFunc(cw, r, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
+            siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
             return
           }
 
           params.{{.GoName}} = {{if not .Required}}&{{end}}value
         {{end}}
         }{{if .Required}} else {
-            siw.errorHandlerFunc(cw, r, &RequiredParamError{ParamName: "{{.ParamName}}"})
+            siw.errorHandlerFunc(cw, ctx, &RequiredParamError{ParamName: "{{.ParamName}}"})
             return
         }{{end}}
       {{end}}
@@ -124,7 +136,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
         r.URL.Query(),
         &params.{{.GoName}},
       ); err != nil {
-        siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
+        siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
         return
       }
       {{end}}
@@ -138,7 +150,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
           var {{.GoName}} {{.TypeDef}}
           n := len(valueList)
           if n != 1 {
-            siw.errorHandlerFunc(cw, r, &TooManyValuesForParamError{ParamName: "{{.ParamName}}", Count: n})
+            siw.errorHandlerFunc(cw, ctx, &TooManyValuesForParamError{ParamName: "{{.ParamName}}", Count: n})
             return
           }
 
@@ -148,7 +160,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
 
         {{if .IsJson}}
           if err := json.Unmarshal([]byte(valueList[0]), &{{.GoName}}); err != nil {
-            siw.errorHandlerFunc(cw, r, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
+            siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
             return
           }
         {{end}}
@@ -156,7 +168,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
         {{if .IsStyled}}
           err = runtime.BindStyledParameterWithOptions("{{.Style}}", "{{.ParamName}}", valueList[0], &{{.GoName}}, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: {{.Explode}}, Required: {{.Required}}})
           if err != nil {
-            siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
+            siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
             return
           }
         {{end}}
@@ -165,7 +177,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
 
         } {{if .Required}}else {
             err = fmt.Errorf("Header parameter {{.ParamName}} is required, but not found")
-            siw.errorHandlerFunc(cw, r, &RequiredHeaderError{ParamName: "{{.ParamName}}", Err: err})
+            siw.errorHandlerFunc(cw, ctx, &RequiredHeaderError{ParamName: "{{.ParamName}}", Err: err})
             return
         }{{end}}
 
@@ -187,12 +199,12 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
         decoded, err := url.QueryUnescape(cookie.Value)
         if err != nil {
           err = fmt.Errorf("Error unescaping cookie parameter '{{.ParamName}}'")
-          siw.errorHandlerFunc(cw, r, &UnescapedCookieParamError{ParamName: "{{.ParamName}}", Err: err})
+          siw.errorHandlerFunc(cw, ctx, &UnescapedCookieParamError{ParamName: "{{.ParamName}}", Err: err})
           return
         }
 
         if err := json.Unmarshal([]byte(decoded), &value); err != nil {
-          siw.errorHandlerFunc(cw, r, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
+          siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
           return
         }
 
@@ -208,7 +220,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
             &value,
             runtime.BindStyledParameterOptions{Explode: {{.Explode}}, Required: {{.Required}}},
         ); err != nil {
-          siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
+          siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "{{.ParamName}}", Err: err})
           return
         }
         params.{{.GoName}} = {{if not .Required}}&{{end}}value
@@ -216,7 +228,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
       }
 
       {{- if .Required}} else {
-        siw.errorHandlerFunc(cw, r, &RequiredParamError{ParamName: "{{.ParamName}}"})
+        siw.errorHandlerFunc(cw, ctx, &RequiredParamError{ParamName: "{{.ParamName}}"})
         return
       }
       {{- end}}
@@ -230,31 +242,82 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
     // ------------- Body parameter for {{$opid}} for {{$contentType}} ContentType -------------
     body := new({{.TypeName}})
     if err := json.NewDecoder(r.Body).Decode(body); err != nil {
-       siw.errorHandlerFunc(cw, r, &UnmarshalingParamError{ParamName: "body", Err: err})
+       siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
        return
     }
   {{end}}
+  {{else if eq $contentType "application/x-www-form-urlencoded" }}
+  {{/* If the defined body is a file, then try and get the file into the expected type */}}
+  body := {{$opid}}JSONBody{
+    File: new(openapi_types.File),
+  }
+
+  bdy, err := io.ReadAll(r.Body)
+  if err != nil {
+    siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
+    return
+  }
+
+  body.File.InitFromBytes(bdy, "file")
   {{end}}
   {{end}}
 
-  handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    {{- if .Spec.Security }}
-    if siw.authz != nil {
-      siw.authz.{{$opid}}(cw, r.WithContext(ctx){{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}}{{ if gt (len .Bodies) 0 }}{{range .Bodies}}{{if eq .ContentType "application/json"}}, body{{end}}{{end}}{{end}})
-      return
-    }
-    {{ else }}
-    siw.handler.{{.OperationId}}(w, r{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}}{{ if gt (len .Bodies) 0 }}{{range .Bodies}}{{if eq .ContentType "application/json"}}, body{{end}}{{end}}{{end}})
+  h := siw.handler.{{$opid}}
+  if siw.authz != nil {
+    h = siw.authz.{{$opid}}
+  }
+
+  // Invoke the callback with all the unmarshalled arguments
+  resp, err := h(l, r{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}}{{if gt (len .Bodies) 0}}, body{{end}}{{$form}})
+  if err != nil {
+    siw.errorHandlerFunc(cw, ctx, err)
+    return
+  }
+
+  {{ $responseCode := "500" }}
+  {{ range $k, $v := .Responses -}}
+    {{ if or (eq $v.StatusCode "200") (eq $v.StatusCode "201") (eq $v.StatusCode "202") }}{{ $responseCode = $v.StatusCode }}{{ end -}}
+  {{ end }}
+
+  {{/*
+  Always return a StatusNoContent on delete operations that are not async.
+  */ -}}
+  {{- if and (eq $method "delete") (ne $responseCode "202") }}
+  w.WriteHeader(http.StatusNoContent)
+  return
+  {{- else }}
+  {{- $responseCode := "500" }}
+  {{- $contentType := "application/json" }}
+  {{ range $k, $v := .Responses -}}
+  {{ if or (eq $v.StatusCode "200") (eq $v.StatusCode "201") (eq $v.StatusCode "202") (eq $v.StatusCode "204") }}
+    {{ $responseCode = $v.StatusCode }}
+    {{ range $unused, $ct := $v.Contents }}
+      {{ $contentType = $ct.ContentType }}
+    {{ end }}
     {{ end -}}
-  }))
-
-  handler.ServeHTTP(cw, r.WithContext(ctx))
+  {{ end }}
+  w.Header().Set("Content-Type", "{{ $contentType }}; charset=utf-8")
+  w.WriteHeader({{ $responseCode }})
+  {{ if eq $contentType "application/json" }}err = json.NewEncoder(w).Encode(resp){{ end -}}
+  {{ if eq $contentType "text/plain" -}}
+    w.Header().Set("Content-Length", strconv.Itoa(len(resp)))
+    _, err = w.Write(resp)
+  {{ end -}}
+  {{- end }}
+  if err != nil {
+    l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+    return
+  }
 }
 {{end}}
 
 type UnescapedCookieParamError struct {
     ParamName string
     Err error
+}
+
+func (e *UnescapedCookieParamError) StatusCode() int {
+    return http.StatusBadRequest
 }
 
 func (e *UnescapedCookieParamError) Error() string {
@@ -270,6 +333,10 @@ type UnmarshalingParamError struct {
     Err error
 }
 
+func (e *UnmarshalingParamError) StatusCode() int {
+    return http.StatusBadRequest
+}
+
 func (e *UnmarshalingParamError) Error() string {
     return fmt.Sprintf("Error unmarshaling parameter %s as JSON: %s", e.ParamName, e.Err.Error())
 }
@@ -282,6 +349,10 @@ type RequiredParamError struct {
     ParamName string
 }
 
+func (e *RequiredParamError) StatusCode() int {
+    return http.StatusBadRequest
+}
+
 func (e *RequiredParamError) Error() string {
     return fmt.Sprintf("Query argument %s is required, but not found", e.ParamName)
 }
@@ -289,6 +360,10 @@ func (e *RequiredParamError) Error() string {
 type RequiredHeaderError struct {
     ParamName string
     Err error
+}
+
+func (e *RequiredHeaderError) StatusCode() int {
+    return http.StatusBadRequest
 }
 
 func (e *RequiredHeaderError) Error() string {
@@ -301,7 +376,11 @@ func (e *RequiredHeaderError) Unwrap() error {
 
 type InvalidParamFormatError struct {
     ParamName string
-	  Err error
+	Err error
+}
+
+func (e *InvalidParamFormatError) StatusCode() int {
+    return http.StatusBadRequest
 }
 
 func (e *InvalidParamFormatError) Error() string {
@@ -317,6 +396,43 @@ type TooManyValuesForParamError struct {
     Count int
 }
 
+func (e *TooManyValuesForParamError) StatusCode() int {
+    return http.StatusBadRequest
+}
+
 func (e *TooManyValuesForParamError) Error() string {
     return fmt.Sprintf("Expected one value for %s, got %d", e.ParamName, e.Count)
+}
+
+// handleError handles returning a correctly-formatted error to the API caller.
+func handleError(w http.ResponseWriter, ctx context.Context, err error) {
+    l := logging.LoggerFromContext(ctx)
+    l.Error("Error handling request", slog.String(loggingKeyError, err.Error()))
+
+    e := new(uhttp.HTTPError)
+    if errors.As(err, &e) {
+      e.RequestID = uhttp.RequestIDFromContext(ctx)
+      _ = encodeErrorResponse(w, e)
+      return
+    }
+
+    // All non-500 errors should be captured appropriately by the implementer. If the request is a valid
+    // internal failure, return a canned response to not expose internal detail.
+    _ = encodeErrorResponse(w, &uhttp.HTTPError{
+       Title: http.StatusText(http.StatusInternalServerError),
+       Detail: "error handling request",
+       Status: http.StatusInternalServerError,
+       RequestID: uhttp.RequestIDFromContext(ctx),
+   })
+}
+
+// encodeErrorResponse encodes input response as an RFC-7807-compliant response to w.
+func encodeErrorResponse(w http.ResponseWriter, response any) error {
+    w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
+
+    if e, ok := response.(uhttp.StatusCoder); ok {
+        w.WriteHeader(e.StatusCode())
+    }
+
+    return json.NewEncoder(w).Encode(response)
 }

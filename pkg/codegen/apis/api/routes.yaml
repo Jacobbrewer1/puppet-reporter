@@ -17,7 +17,7 @@ paths:
       summary: Upload a report
       requestBody:
         content:
-          multipart/form-data:
+          application/x-www-form-urlencoded:
             schema:
               type: object
               properties:
@@ -65,9 +65,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/report_response'
+                $ref: '#/components/schemas/report_response'
         '400':
           description: Bad Request
           content:

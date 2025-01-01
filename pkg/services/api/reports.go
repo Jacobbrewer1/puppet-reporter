@@ -8,27 +8,20 @@ import (
 
 	"github.com/jacobbrewer1/pagefilter"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
-	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 	"github.com/jacobbrewer1/uhttp"
 )
 
-func (s *service) GetReports(w http.ResponseWriter, r *http.Request, params *api.GetReportsParams) {
-	l := logging.LoggerFromRequest(r)
-
+func (s *service) GetReports(l *slog.Logger, r *http.Request, params api.GetReportsParams) (*api.ReportResponse, error) {
 	paginationDetails, err := pagefilter.DetailsFromRequest(r)
 	if err != nil {
-		l.Error("Failed to get pagination details", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusBadRequest, "failed to get pagination details", err)
-		return
+		return nil, uhttp.NewHTTPError(http.StatusBadRequest, err, "failed to get pagination details")
 	}
 
-	filts, err := s.getReportsFilters(params)
+	filts, err := s.getReportsFilters(&params)
 	if err != nil {
-		l.Error("Failed to parse filters", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusBadRequest, "failed to parse filters", err)
-		return
+		return nil, uhttp.NewHTTPError(http.StatusBadRequest, err, "failed to parse filters")
 	}
 
 	reports, err := s.r.GetReports(paginationDetails, filts)
@@ -40,9 +33,7 @@ func (s *service) GetReports(w http.ResponseWriter, r *http.Request, params *api
 				Total: 0,
 			}
 		default:
-			l.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "error getting reports", err)
-			return
+			return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "error getting reports")
 		}
 	}
 
@@ -56,10 +47,7 @@ func (s *service) GetReports(w http.ResponseWriter, r *http.Request, params *api
 		Total:   reports.Total,
 	}
 
-	if err := uhttp.EncodeJSON(w, http.StatusOK, resp); err != nil {
-		l.Error("Failed to encode response", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "failed to encode response", err)
-	}
+	return resp, nil
 }
 
 func (s *service) getReportsFilters(params *api.GetReportsParams) (*repo.GetReportsFilters, error) {
@@ -100,27 +88,18 @@ func (s *service) modelAsApiReport(report *models.Report) *api.Report {
 	}
 }
 
-func (s *service) GetReport(w http.ResponseWriter, r *http.Request, hash string) {
-	l := logging.LoggerFromRequest(r)
-
+func (s *service) GetReport(l *slog.Logger, r *http.Request, hash string) (*api.ReportDetails, error) {
 	report, err := s.reportDetailsByHash(hash)
 	if err != nil {
 		switch {
 		case errors.Is(err, repo.ErrReportNotFound):
-			l.Error("Report not found", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendErrorMessageWithStatus(w, http.StatusNotFound, "report not found", err)
-			return
+			return nil, uhttp.NewHTTPError(http.StatusNotFound, err, "report not found")
 		default:
-			l.Error("Failed to get report details", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "failed to get report details", err)
-			return
+			return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "failed to get report")
 		}
 	}
 
-	if err := uhttp.EncodeJSON(w, http.StatusOK, report); err != nil {
-		l.Error("Failed to encode response", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "failed to encode response", err)
-	}
+	return report, nil
 }
 
 func (s *service) modelAsApiLogMessage(log *models.LogMessage) *api.LogMessage {
