@@ -3,12 +3,17 @@ components:
   schemas:
     message:
       type: object
+      required:
+        - message
       properties:
         message:
           type: string
           example: 'Example message'
     error_message:
       type: object
+      required:
+        - message
+        - error
       properties:
         message:
           type: string

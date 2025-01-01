@@ -4,30 +4,43 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/uhttp"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Get all reports
-	// (GET /reports)
-	GetReports(w http.ResponseWriter, r *http.Request, params *GetReportsParams)
+	// GetReports (GET /reports)
+	GetReports(l *slog.Logger, r *http.Request, params GetReportsParams) (*ReportResponse, error)
+
 	// Get a report by hash
-	// (GET /reports/{hash})
-	GetReport(w http.ResponseWriter, r *http.Request, hash string)
+	// GetReport (GET /reports/{hash})
+	GetReport(l *slog.Logger, r *http.Request, hash string) (*ReportDetails, error)
+
 	// Upload a report
-	// (POST /upload)
-	UploadReport(w http.ResponseWriter, r *http.Request)
+	// UploadReport (POST /upload)
+	UploadReport(l *slog.Logger, r *http.Request, body0 UploadReportJSONBody) (*ReportDetails, error)
 }
 
-type RateLimiterFunc = func(http.ResponseWriter, *http.Request) error
+const (
+	loggingKeyError = "error"
+)
+
+type RateLimiterFunc = func(http.ResponseWriter, context.Context) error
 type MetricsMiddlewareFunc = http.HandlerFunc
-type ErrorHandlerFunc = func(http.ResponseWriter, *http.Request, error)
+type ErrorHandlerFunc = func(http.ResponseWriter, context.Context, error)
 
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
@@ -71,6 +84,8 @@ type ServerOption func(s *ServerInterfaceWrapper)
 
 // GetReports operation middleware
 func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Request) {
+	l := logging.LoggerFromRequest(r)
+
 	ctx := r.Context()
 	cw := uhttp.NewResponseWriter(w,
 		uhttp.WithDefaultStatusCode(http.StatusOK),
@@ -85,7 +100,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 	}()
 
 	// Parameter object where we will unmarshal all parameters from the context
-	params := new(GetReportsParams)
+	var params GetReportsParams
 
 	// ------------- Optional query parameter "limit" -------------
 	if err := runtime.BindQueryParameter(
@@ -96,7 +111,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.Limit,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "limit", Err: err})
 		return
 	}
 
@@ -109,7 +124,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.LastVal,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "last_val", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "last_val", Err: err})
 		return
 	}
 
@@ -122,7 +137,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.LastId,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "last_id", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "last_id", Err: err})
 		return
 	}
 
@@ -135,7 +150,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.SortBy,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "sort_by", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "sort_by", Err: err})
 		return
 	}
 
@@ -148,7 +163,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.SortDir,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "sort_dir", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "sort_dir", Err: err})
 		return
 	}
 
@@ -161,7 +176,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.Host,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "host", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "host", Err: err})
 		return
 	}
 
@@ -174,7 +189,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.Environment,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "environment", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "environment", Err: err})
 		return
 	}
 
@@ -187,19 +202,35 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		r.URL.Query(),
 		&params.State,
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "state", Err: err})
 		return
 	}
 
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.handler.GetReports(w, r, params)
-	}))
+	h := siw.handler.GetReports
+	if siw.authz != nil {
+		h = siw.authz.GetReports
+	}
 
-	handler.ServeHTTP(cw, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	resp, err := h(l, r, params)
+	if err != nil {
+		siw.errorHandlerFunc(cw, ctx, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+		return
+	}
 }
 
 // GetReport operation middleware
 func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Request) {
+	l := logging.LoggerFromRequest(r)
+
 	ctx := r.Context()
 	cw := uhttp.NewResponseWriter(w,
 		uhttp.WithDefaultStatusCode(http.StatusOK),
@@ -223,19 +254,35 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 		&hash,
 		runtime.BindStyledParameterOptions{Explode: false, Required: true},
 	); err != nil {
-		siw.errorHandlerFunc(cw, r, &InvalidParamFormatError{ParamName: "hash", Err: err})
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "hash", Err: err})
 		return
 	}
 
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.handler.GetReport(w, r, hash)
-	}))
+	h := siw.handler.GetReport
+	if siw.authz != nil {
+		h = siw.authz.GetReport
+	}
 
-	handler.ServeHTTP(cw, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	resp, err := h(l, r, hash)
+	if err != nil {
+		siw.errorHandlerFunc(cw, ctx, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+		return
+	}
 }
 
 // UploadReport operation middleware
 func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.Request) {
+	l := logging.LoggerFromRequest(r)
+
 	ctx := r.Context()
 	cw := uhttp.NewResponseWriter(w,
 		uhttp.WithDefaultStatusCode(http.StatusOK),
@@ -249,16 +296,46 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 		}
 	}()
 
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.handler.UploadReport(w, r)
-	}))
+	body := UploadReportJSONBody{
+		File: new(openapi_types.File),
+	}
 
-	handler.ServeHTTP(cw, r.WithContext(ctx))
+	bdy, err := io.ReadAll(r.Body)
+	if err != nil {
+		siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
+		return
+	}
+
+	body.File.InitFromBytes(bdy, "file")
+
+	h := siw.handler.UploadReport
+	if siw.authz != nil {
+		h = siw.authz.UploadReport
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	resp, err := h(l, r, body)
+	if err != nil {
+		siw.errorHandlerFunc(cw, ctx, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		l.Error("Error writing response", slog.String(loggingKeyError, err.Error()))
+		return
+	}
 }
 
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
+}
+
+func (e *UnescapedCookieParamError) StatusCode() int {
+	return http.StatusBadRequest
 }
 
 func (e *UnescapedCookieParamError) Error() string {
@@ -274,6 +351,10 @@ type UnmarshalingParamError struct {
 	Err       error
 }
 
+func (e *UnmarshalingParamError) StatusCode() int {
+	return http.StatusBadRequest
+}
+
 func (e *UnmarshalingParamError) Error() string {
 	return fmt.Sprintf("Error unmarshaling parameter %s as JSON: %s", e.ParamName, e.Err.Error())
 }
@@ -286,6 +367,10 @@ type RequiredParamError struct {
 	ParamName string
 }
 
+func (e *RequiredParamError) StatusCode() int {
+	return http.StatusBadRequest
+}
+
 func (e *RequiredParamError) Error() string {
 	return fmt.Sprintf("Query argument %s is required, but not found", e.ParamName)
 }
@@ -293,6 +378,10 @@ func (e *RequiredParamError) Error() string {
 type RequiredHeaderError struct {
 	ParamName string
 	Err       error
+}
+
+func (e *RequiredHeaderError) StatusCode() int {
+	return http.StatusBadRequest
 }
 
 func (e *RequiredHeaderError) Error() string {
@@ -308,6 +397,10 @@ type InvalidParamFormatError struct {
 	Err       error
 }
 
+func (e *InvalidParamFormatError) StatusCode() int {
+	return http.StatusBadRequest
+}
+
 func (e *InvalidParamFormatError) Error() string {
 	return fmt.Sprintf("Invalid format for parameter %s: %s", e.ParamName, e.Err.Error())
 }
@@ -321,8 +414,45 @@ type TooManyValuesForParamError struct {
 	Count     int
 }
 
+func (e *TooManyValuesForParamError) StatusCode() int {
+	return http.StatusBadRequest
+}
+
 func (e *TooManyValuesForParamError) Error() string {
 	return fmt.Sprintf("Expected one value for %s, got %d", e.ParamName, e.Count)
+}
+
+// handleError handles returning a correctly-formatted error to the API caller.
+func handleError(w http.ResponseWriter, ctx context.Context, err error) {
+	l := logging.LoggerFromContext(ctx)
+	l.Error("Error handling request", slog.String(loggingKeyError, err.Error()))
+
+	e := new(uhttp.HTTPError)
+	if errors.As(err, &e) {
+		e.RequestID = uhttp.RequestIDFromContext(ctx)
+		_ = encodeErrorResponse(w, e)
+		return
+	}
+
+	// All non-500 errors should be captured appropriately by the implementer. If the request is a valid
+	// internal failure, return a canned response to not expose internal detail.
+	_ = encodeErrorResponse(w, &uhttp.HTTPError{
+		Title:     http.StatusText(http.StatusInternalServerError),
+		Detail:    "error handling request",
+		Status:    http.StatusInternalServerError,
+		RequestID: uhttp.RequestIDFromContext(ctx),
+	})
+}
+
+// encodeErrorResponse encodes input response as an RFC-7807-compliant response to w.
+func encodeErrorResponse(w http.ResponseWriter, response any) error {
+	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
+
+	if e, ok := response.(uhttp.StatusCoder); ok {
+		w.WriteHeader(e.StatusCode())
+	}
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 // wrapHandler will wrap the handler with middlewares in the other specified
@@ -341,7 +471,11 @@ func wrapHandler(handler http.HandlerFunc, middlewares ...mux.MiddlewareFunc) ht
 // RegisterHandlers registers the api handlers.
 func RegisterHandlers(router *mux.Router, si ServerInterface, opts ...ServerOption) {
 	wrapper := ServerInterfaceWrapper{
-		handler: si,
+		authz:             nil,
+		handler:           si,
+		rateLimiter:       nil,
+		metricsMiddleware: nil,
+		errorHandlerFunc:  handleError,
 	}
 
 	for _, opt := range opts {
@@ -359,7 +493,11 @@ func RegisterHandlers(router *mux.Router, si ServerInterface, opts ...ServerOpti
 // RegisterUnauthedHandlers registers any api handlers which do not have any authentication on them. Most services will not have any.
 func RegisterUnauthedHandlers(router *mux.Router, si ServerInterface, opts ...ServerOption) {
 	wrapper := ServerInterfaceWrapper{
-		handler: si,
+		authz:             nil,
+		handler:           si,
+		rateLimiter:       nil,
+		metricsMiddleware: nil,
+		errorHandlerFunc:  handleError,
 	}
 
 	for _, opt := range opts {

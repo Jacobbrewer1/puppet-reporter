@@ -18,7 +18,7 @@ func NewMessage(message string, args ...any) *common.Message {
 		msg = message
 	}
 	return &common.Message{
-		Message: &msg,
+		Message: msg,
 	}
 }
 
@@ -45,8 +45,8 @@ func NewErrorMessage(message string, err error, args ...any) *common.ErrorMessag
 		err = errors.New("")
 	}
 	return &common.ErrorMessage{
-		Message: &msg,
-		Error:   ptr(err.Error()),
+		Message: msg,
+		Error:   err.Error(),
 	}
 }
 

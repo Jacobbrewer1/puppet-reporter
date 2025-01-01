@@ -103,13 +103,13 @@ type GetReportsParams struct {
 // GetReportsParamsSortDir defines parameters for GetReports.
 type GetReportsParamsSortDir string
 
-// UploadReportMultipartBody defines parameters for UploadReport.
-type UploadReportMultipartBody struct {
-	File *openapi_types.File `json:"file,omitempty"`
+// UploadReportFormdataBody defines parameters for UploadReport.
+type UploadReportFormdataBody struct {
+	File *openapi_types.File `form:"file,omitempty" json:"file,omitempty"`
 }
 
-// UploadReportMultipartRequestBody defines body for UploadReport for multipart/form-data ContentType.
-type UploadReportMultipartRequestBody UploadReportMultipartBody
+// UploadReportFormdataRequestBody defines body for UploadReport for application/x-www-form-urlencoded ContentType.
+type UploadReportFormdataRequestBody UploadReportFormdataBody
 
 // Temporary inclusion of type alias for backwards compatibility
-type UploadReportJSONBody = UploadReportMultipartBody
+type UploadReportJSONBody = UploadReportFormdataBody
