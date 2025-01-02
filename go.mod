@@ -1,8 +1,6 @@
 module github.com/jacobbrewer1/puppet-reporter
 
-go 1.23
-
-toolchain go1.23.1
+go 1.23.2
 
 require (
 	github.com/alexliesenfeld/health v0.8.0
@@ -12,6 +10,7 @@ require (
 	github.com/jacobbrewer1/pagefilter v0.1.6
 	github.com/jacobbrewer1/patcher v0.1.13
 	github.com/jacobbrewer1/uhttp v0.0.6
+	github.com/jacobbrewer1/utils v0.0.1
 	github.com/jacobbrewer1/vaulty v0.1.6
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/oapi-codegen/runtime v1.1.1

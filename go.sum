@@ -92,6 +92,8 @@ github.com/jacobbrewer1/patcher v0.1.13 h1:dOqzrX/bP3HXvJgAS85v0ZB2WHWzjeehdQ0at
 github.com/jacobbrewer1/patcher v0.1.13/go.mod h1:RTWS5kY5uTo0VBv7PcFamRy6UGiNvM6f4zGvIShBw0k=
 github.com/jacobbrewer1/uhttp v0.0.6 h1:r4PNJe8qMqb9l6e4Mc+3+odA2R+clU3PTTxAJ0Ww2Cs=
 github.com/jacobbrewer1/uhttp v0.0.6/go.mod h1:a4VQQjrolQ8kqBz/NHEZiGVaeT3tsQ2Whp1owPiZH+Y=
+github.com/jacobbrewer1/utils v0.0.1 h1:kx57NtBgO/c7rCw2QqYY34lCgoS9/VwUjjNvUtgCsS4=
+github.com/jacobbrewer1/utils v0.0.1/go.mod h1:rmV+MkOgtyJWsGau9q3a4sZNuLzLACTZOMpbgfrpO7s=
 github.com/jacobbrewer1/vaulty v0.1.6 h1:h+STKGtDwVugWmeVu3ixlWiuU/DQYmJj0x5ADq1jm5Y=
 github.com/jacobbrewer1/vaulty v0.1.6/go.mod h1:kKQcDjAdRZLTlaOv6HbhqDXObDjIBgWC7FBC9rdDfbA=
 github.com/jinzhu/copier v0.3.5 h1:GlvfUwHk62RokgqVNvYsku0TATCF7bAHVwEXoBh3iJg=
