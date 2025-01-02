@@ -92,29 +92,17 @@ type ClientInterface interface {
 	// GetReports request
 	GetReports(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetReport request
-	GetReport(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// UploadReportWithBody request with any body
 	UploadReportWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UploadReportWithFormdataBody(ctx context.Context, body UploadReportFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetReport request
+	GetReport(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetReports(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetReportsRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetReport(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetReportRequest(c.Server, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +127,18 @@ func (c *Client) UploadReportWithBody(ctx context.Context, contentType string, b
 
 func (c *Client) UploadReportWithFormdataBody(ctx context.Context, body UploadReportFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUploadReportRequestWithFormdataBody(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetReport(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReportRequest(c.Server, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -342,6 +342,46 @@ func NewGetReportsRequest(server string, params *GetReportsParams) (*http.Reques
 	return req, nil
 }
 
+// NewUploadReportRequestWithFormdataBody calls the generic UploadReport builder with application/x-www-form-urlencoded body
+func NewUploadReportRequestWithFormdataBody(server string, body UploadReportFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewUploadReportRequestWithBody(server, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewUploadReportRequestWithBody generates requests for UploadReport with any type of body
+func NewUploadReportRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/upload")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetReportRequest generates requests for GetReport
 func NewGetReportRequest(server string, hash string) (*http.Request, error) {
 	var err error
@@ -372,46 +412,6 @@ func NewGetReportRequest(server string, hash string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewUploadReportRequestWithFormdataBody calls the generic UploadReport builder with application/x-www-form-urlencoded body
-func NewUploadReportRequestWithFormdataBody(server string, body UploadReportFormdataRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	bodyStr, err := runtime.MarshalForm(body, nil)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = strings.NewReader(bodyStr.Encode())
-	return NewUploadReportRequestWithBody(server, "application/x-www-form-urlencoded", bodyReader)
-}
-
-// NewUploadReportRequestWithBody generates requests for UploadReport with any type of body
-func NewUploadReportRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/upload")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -462,13 +462,13 @@ type ClientWithResponsesInterface interface {
 	// GetReportsWithResponse request
 	GetReportsWithResponse(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*GetReportsResponse, error)
 
-	// GetReportWithResponse request
-	GetReportWithResponse(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*GetReportResponse, error)
-
 	// UploadReportWithBodyWithResponse request with any body
 	UploadReportWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReportResponse, error)
 
 	UploadReportWithFormdataBodyWithResponse(ctx context.Context, body UploadReportFormdataRequestBody, reqEditors ...RequestEditorFn) (*UploadReportResponse, error)
+
+	// GetReportWithResponse request
+	GetReportWithResponse(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*GetReportResponse, error)
 }
 
 type GetReportsResponse struct {
@@ -489,6 +489,30 @@ func (r GetReportsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetReportsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UploadReportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *ReportDetails
+	JSON400      *externalRef1.ErrorMessage
+	JSON500      *externalRef1.ErrorMessage
+}
+
+// Status returns HTTPResponse.Status
+func (r UploadReportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UploadReportResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -520,30 +544,6 @@ func (r GetReportResponse) StatusCode() int {
 	return 0
 }
 
-type UploadReportResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *ReportDetails
-	JSON400      *externalRef1.ErrorMessage
-	JSON500      *externalRef1.ErrorMessage
-}
-
-// Status returns HTTPResponse.Status
-func (r UploadReportResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UploadReportResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 // GetReportsWithResponse request returning *GetReportsResponse
 func (c *ClientWithResponses) GetReportsWithResponse(ctx context.Context, params *GetReportsParams, reqEditors ...RequestEditorFn) (*GetReportsResponse, error) {
 	rsp, err := c.GetReports(ctx, params, reqEditors...)
@@ -551,15 +551,6 @@ func (c *ClientWithResponses) GetReportsWithResponse(ctx context.Context, params
 		return nil, err
 	}
 	return ParseGetReportsResponse(rsp)
-}
-
-// GetReportWithResponse request returning *GetReportResponse
-func (c *ClientWithResponses) GetReportWithResponse(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*GetReportResponse, error) {
-	rsp, err := c.GetReport(ctx, hash, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetReportResponse(rsp)
 }
 
 // UploadReportWithBodyWithResponse request with arbitrary body returning *UploadReportResponse
@@ -577,6 +568,15 @@ func (c *ClientWithResponses) UploadReportWithFormdataBodyWithResponse(ctx conte
 		return nil, err
 	}
 	return ParseUploadReportResponse(rsp)
+}
+
+// GetReportWithResponse request returning *GetReportResponse
+func (c *ClientWithResponses) GetReportWithResponse(ctx context.Context, hash string, reqEditors ...RequestEditorFn) (*GetReportResponse, error) {
+	rsp, err := c.GetReport(ctx, hash, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReportResponse(rsp)
 }
 
 // ParseGetReportsResponse parses an HTTP response from a GetReportsWithResponse call
@@ -602,6 +602,46 @@ func ParseGetReportsResponse(rsp *http.Response) (*GetReportsResponse, error) {
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest externalRef1.Message
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.ErrorMessage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUploadReportResponse parses an HTTP response from a UploadReportWithResponse call
+func ParseUploadReportResponse(rsp *http.Response) (*UploadReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UploadReportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ReportDetails
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -653,46 +693,6 @@ func ParseGetReportResponse(rsp *http.Response) (*GetReportResponse, error) {
 			return nil, err
 		}
 		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.ErrorMessage
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUploadReportResponse parses an HTTP response from a UploadReportWithResponse call
-func ParseUploadReportResponse(rsp *http.Response) (*UploadReportResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UploadReportResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest ReportDetails
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.ErrorMessage
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest externalRef1.ErrorMessage
