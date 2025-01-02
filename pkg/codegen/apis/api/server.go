@@ -347,7 +347,7 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set(uhttp.HeaderContentType, "application/json; charset=utf-8")
-	w.WriteHeader(200)
+	w.WriteHeader(201)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		siw.errorHandlerFunc(cw, ctx, err)

@@ -9,41 +9,6 @@ tags:
     description: Operations related to reports
 
 paths:
-  /upload:
-    post:
-      operationId: uploadReport
-      tags:
-        - reports
-      summary: Upload a report
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/report_details'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
-
   /reports:
     get:
       operationId: getReports
@@ -113,6 +78,41 @@ paths:
             application/json:
               schema:
                 $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
+
+  /reports/upload:
+    post:
+      operationId: uploadReport
+      tags:
+        - reports
+      summary: Upload a report
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/report_details'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '500':
           description: Internal Server Error
           content:
