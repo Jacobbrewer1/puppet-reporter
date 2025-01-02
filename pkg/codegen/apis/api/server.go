@@ -25,13 +25,13 @@ type ServerInterface interface {
 	// GetReports (GET /reports)
 	GetReports(l *slog.Logger, r *http.Request, params GetReportsParams) (*ReportResponse, error)
 
+	// Upload a report
+	// UploadReport (POST /reports/upload)
+	UploadReport(l *slog.Logger, r *http.Request, body0 *UploadReportJSONBody) (*ReportDetails, error)
+
 	// Get a report by hash
 	// GetReport (GET /reports/{hash})
 	GetReport(l *slog.Logger, r *http.Request, hash string) (*ReportDetails, error)
-
-	// Upload a report
-	// UploadReport (POST /upload)
-	UploadReport(l *slog.Logger, r *http.Request, body0 *UploadReportJSONBody) (*ReportDetails, error)
 }
 
 const (
@@ -253,6 +253,56 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// UploadReport operation middleware
+func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.Request) {
+	l := logging.LoggerFromRequest(r)
+
+	ctx := r.Context()
+	cw := uhttp.NewResponseWriter(w,
+		uhttp.WithDefaultStatusCode(http.StatusOK),
+		uhttp.WithDefaultHeader(uhttp.HeaderRequestID, uhttp.RequestIDFromContext(ctx)),
+		uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
+	)
+
+	defer func() {
+		if siw.metricsMiddleware != nil {
+			siw.metricsMiddleware(cw, r)
+		}
+	}()
+
+	body := &UploadReportJSONBody{
+		File: new(openapi_types.File),
+	}
+
+	bdy, err := io.ReadAll(r.Body)
+	if err != nil {
+		siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
+		return
+	}
+
+	body.File.InitFromBytes(bdy, "file")
+
+	h := siw.handler.UploadReport
+	if siw.authz != nil {
+		h = siw.authz.UploadReport
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	resp, err := h(l, r, body)
+	if err != nil {
+		siw.errorHandlerFunc(cw, ctx, err)
+		return
+	}
+
+	w.Header().Set(uhttp.HeaderContentType, "application/json; charset=utf-8")
+	w.WriteHeader(201)
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		siw.errorHandlerFunc(cw, ctx, err)
+		return
+	}
+}
+
 // GetReport operation middleware
 func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Request) {
 	l := logging.LoggerFromRequest(r)
@@ -291,56 +341,6 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 
 	// Invoke the callback with all the unmarshalled arguments
 	resp, err := h(l, r, hash)
-	if err != nil {
-		siw.errorHandlerFunc(cw, ctx, err)
-		return
-	}
-
-	w.Header().Set(uhttp.HeaderContentType, "application/json; charset=utf-8")
-	w.WriteHeader(200)
-	err = json.NewEncoder(w).Encode(resp)
-	if err != nil {
-		siw.errorHandlerFunc(cw, ctx, err)
-		return
-	}
-}
-
-// UploadReport operation middleware
-func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.Request) {
-	l := logging.LoggerFromRequest(r)
-
-	ctx := r.Context()
-	cw := uhttp.NewResponseWriter(w,
-		uhttp.WithDefaultStatusCode(http.StatusOK),
-		uhttp.WithDefaultHeader(uhttp.HeaderRequestID, uhttp.RequestIDFromContext(ctx)),
-		uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
-	)
-
-	defer func() {
-		if siw.metricsMiddleware != nil {
-			siw.metricsMiddleware(cw, r)
-		}
-	}()
-
-	body := &UploadReportJSONBody{
-		File: new(openapi_types.File),
-	}
-
-	bdy, err := io.ReadAll(r.Body)
-	if err != nil {
-		siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
-		return
-	}
-
-	body.File.InitFromBytes(bdy, "file")
-
-	h := siw.handler.UploadReport
-	if siw.authz != nil {
-		h = siw.authz.UploadReport
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	resp, err := h(l, r, body)
 	if err != nil {
 		siw.errorHandlerFunc(cw, ctx, err)
 		return
@@ -521,6 +521,6 @@ func RegisterUnauthedHandlers(router *mux.Router, si ServerInterface, opts ...Se
 	router.Use(uhttp.GenerateOrCopyRequestIDMux())
 
 	router.Methods(http.MethodGet).Path("/reports").Handler(wrapHandler(wrapper.GetReports))
+	router.Methods(http.MethodPost).Path("/reports/upload").Handler(wrapHandler(wrapper.UploadReport))
 	router.Methods(http.MethodGet).Path("/reports/{hash}").Handler(wrapHandler(wrapper.GetReport))
-	router.Methods(http.MethodPost).Path("/upload").Handler(wrapHandler(wrapper.UploadReport))
 }
