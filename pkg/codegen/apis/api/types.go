@@ -113,11 +113,17 @@ func (e *Status) UnmarshalJSON(data []byte) error {
 // QueryEnvironment defines the model for query_environment.
 type QueryEnvironment = string
 
+// QueryFrom defines the model for query_from.
+type QueryFrom = time.Time
+
 // QueryHost defines the model for query_host.
 type QueryHost = string
 
 // QueryState defines the model for query_state.
 type QueryState = Status
+
+// QueryTo defines the model for query_to.
+type QueryTo = time.Time
 
 // GetReportsParams defines parameters for GetReports.
 type GetReportsParams struct {
@@ -144,6 +150,12 @@ type GetReportsParams struct {
 
 	// State Filter by status
 	State *QueryState `form:"state,omitempty" json:"state,omitempty"`
+
+	// From Filter by executed from date
+	From *QueryFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To Filter by executed to date
+	To *QueryTo `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // GetReportsParamsSortDir defines parameters for GetReports.

@@ -13,7 +13,7 @@ import (
 	"github.com/jacobbrewer1/uhttp"
 )
 
-func (s *service) UploadReport(l *slog.Logger, r *http.Request, body0 api.UploadReportJSONBody) (*api.ReportDetails, error) {
+func (s *service) UploadReport(l *slog.Logger, r *http.Request, body0 *api.UploadReportJSONBody) (*api.ReportDetails, error) {
 	bts, err := body0.File.Bytes()
 	if err != nil {
 		return nil, uhttp.NewHTTPError(http.StatusBadRequest, err, "error reading file")

@@ -59,6 +59,8 @@ paths:
         - $ref: '#/components/parameters/query_host'
         - $ref: '#/components/parameters/query_environment'
         - $ref: '#/components/parameters/query_state'
+        - $ref: '#/components/parameters/query_from'
+        - $ref: '#/components/parameters/query_to'
       responses:
         '200':
           description: OK
@@ -138,6 +140,22 @@ components:
       description: Filter by status
       schema:
         $ref: '#/components/schemas/status'
+    query_from:
+      name: from
+      in: query
+      description: Filter by executed from date
+      schema:
+        type: string
+        format: date-time
+        example: 2021-07-01T12:00:00Z
+    query_to:
+      name: to
+      in: query
+      description: Filter by executed to date
+      schema:
+        type: string
+        format: date-time
+        example: 2021-07-01T12:00:00Z
 
   schemas:
     report_response:

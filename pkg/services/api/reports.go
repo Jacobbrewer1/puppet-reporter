@@ -69,6 +69,14 @@ func (s *service) getReportsFilters(params *api.GetReportsParams) (*repo.GetRepo
 		filters.State = utils.Ptr(string(*params.State))
 	}
 
+	if params.From != nil {
+		filters.From = params.From
+	}
+
+	if params.To != nil {
+		filters.To = params.To
+	}
+
 	return filters, nil
 }
 
