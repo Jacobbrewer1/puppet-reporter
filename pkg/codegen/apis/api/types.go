@@ -62,10 +62,10 @@ type Status string
 
 // List of Status
 const (
-	Status_CHANGED   Status = "CHANGED"
-	Status_FAILED    Status = "FAILED"
-	Status_SKIPPED   Status = "SKIPPED"
-	Status_UNCHANGED Status = "UNCHANGED"
+	StatusCHANGED   Status = "CHANGED"
+	StatusFAILED    Status = "FAILED"
+	StatusSKIPPED   Status = "SKIPPED"
+	StatusUNCHANGED Status = "UNCHANGED"
 )
 
 func (e *Status) IsValid() bool {
@@ -74,13 +74,13 @@ func (e *Status) IsValid() bool {
 	}
 
 	switch *e {
-	case Status_CHANGED:
+	case StatusCHANGED:
 		return true
-	case Status_FAILED:
+	case StatusFAILED:
 		return true
-	case Status_SKIPPED:
+	case StatusSKIPPED:
 		return true
-	case Status_UNCHANGED:
+	case StatusUNCHANGED:
 		return true
 	default:
 		return false
