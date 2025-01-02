@@ -10,8 +10,8 @@ import (
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
-	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
 	"github.com/jacobbrewer1/uhttp"
+	"github.com/jacobbrewer1/utils"
 )
 
 func (s *service) GetReports(l *slog.Logger, r *http.Request, params api.GetReportsParams) (*api.ReportResponse, error) {

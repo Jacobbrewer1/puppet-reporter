@@ -13,7 +13,7 @@ import (
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
-	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
+	"github.com/jacobbrewer1/utils"
 	"github.com/smallfish/simpleyaml"
 )
 
