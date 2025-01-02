@@ -1,15 +1,13 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 )
 
 func (r *repository) SaveLogs(logs []*models.LogMessage) error {
-	//return models.InsertManyLogMessages(r.db, logs...)
-	return errors.New("not implemented")
+	return models.InsertManyLogMessages(r.db, logs...)
 }
 
 func (r *repository) GetLogsByReportID(reportID int) ([]*models.LogMessage, error) {
