@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jacobbrewer1/pagefilter"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
@@ -97,6 +98,20 @@ func (r *repository) getReportsFilters(f *GetReportsFilters) *pagefilter.MultiFi
 
 	if f.State != nil {
 		mf.Add(filters.NewReportsStateLike(*f.State))
+	}
+
+	if f.From != nil || f.To != nil {
+		from := time.Time{}
+		if f.From != nil {
+			from = *f.From
+		}
+
+		to := time.Time{}
+		if f.To != nil {
+			to = *f.To
+		}
+
+		mf.Add(filters.NewReportsExecutedRange(from, to))
 	}
 
 	return mf

@@ -61,7 +61,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   ctx := r.Context()
   cw := uhttp.NewResponseWriter(w,
     uhttp.WithDefaultStatusCode(http.StatusOK),
-    uhttp.WithDefaultHeader("X-Request-ID", uhttp.RequestIDFromContext(ctx)),
+    uhttp.WithDefaultHeader(uhttp.HeaderRequestID, uhttp.RequestIDFromContext(ctx)),
     uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
   )
 
@@ -248,7 +248,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   {{end}}
   {{else if eq $contentType "application/x-www-form-urlencoded" }}
   {{/* If the defined body is a file, then try and get the file into the expected type */}}
-  body := {{$opid}}JSONBody{
+  body := &{{$opid}}JSONBody{
     File: new(openapi_types.File),
   }
 
@@ -296,7 +296,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
     {{ end }}
     {{ end -}}
   {{ end }}
-  w.Header().Set("Content-Type", "{{ $contentType }}; charset=utf-8")
+  w.Header().Set(uhttp.HeaderContentType, "{{ $contentType }}; charset=utf-8")
   w.WriteHeader({{ $responseCode }})
   {{ if eq $contentType "application/json" }}err = json.NewEncoder(w).Encode(resp){{ end -}}
   {{ if eq $contentType "text/plain" -}}
@@ -310,6 +310,45 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   }
 }
 {{end}}
+
+// handleError handles returning a correctly-formatted error to the API caller.
+func handleError(w http.ResponseWriter, ctx context.Context, err error) {
+    l := logging.LoggerFromContext(ctx)
+    l.Error("Error handling request", slog.String(loggingKeyError, err.Error()))
+
+    e := new(uhttp.HTTPError)
+    if errors.As(err, &e) {
+      e.RequestID = uhttp.RequestIDFromContext(ctx)
+      _ = encodeErrorResponse(w, e)
+      return
+    }
+
+    code := http.StatusInternalServerError
+    if e, ok := err.(uhttp.StatusCoder); ok {
+        code = e.StatusCode()
+    }
+
+    _ = encodeErrorResponse(w, &uhttp.HTTPError{
+       Title: http.StatusText(code),
+       Detail: "error handling request",
+       Status: code,
+       RequestID: uhttp.RequestIDFromContext(ctx),
+       Details: []interface{}{
+         err.Error(),
+       },
+   })
+}
+
+// encodeErrorResponse encodes input response as an RFC-7807-compliant response to w.
+func encodeErrorResponse(w http.ResponseWriter, response any) error {
+    w.Header().Set(uhttp.HeaderContentType, "application/problem+json; charset=utf-8")
+
+    if e, ok := response.(uhttp.StatusCoder); ok {
+        w.WriteHeader(e.StatusCode())
+    }
+
+    return json.NewEncoder(w).Encode(response)
+}
 
 type UnescapedCookieParamError struct {
     ParamName string
@@ -402,37 +441,4 @@ func (e *TooManyValuesForParamError) StatusCode() int {
 
 func (e *TooManyValuesForParamError) Error() string {
     return fmt.Sprintf("Expected one value for %s, got %d", e.ParamName, e.Count)
-}
-
-// handleError handles returning a correctly-formatted error to the API caller.
-func handleError(w http.ResponseWriter, ctx context.Context, err error) {
-    l := logging.LoggerFromContext(ctx)
-    l.Error("Error handling request", slog.String(loggingKeyError, err.Error()))
-
-    e := new(uhttp.HTTPError)
-    if errors.As(err, &e) {
-      e.RequestID = uhttp.RequestIDFromContext(ctx)
-      _ = encodeErrorResponse(w, e)
-      return
-    }
-
-    // All non-500 errors should be captured appropriately by the implementer. If the request is a valid
-    // internal failure, return a canned response to not expose internal detail.
-    _ = encodeErrorResponse(w, &uhttp.HTTPError{
-       Title: http.StatusText(http.StatusInternalServerError),
-       Detail: "error handling request",
-       Status: http.StatusInternalServerError,
-       RequestID: uhttp.RequestIDFromContext(ctx),
-   })
-}
-
-// encodeErrorResponse encodes input response as an RFC-7807-compliant response to w.
-func encodeErrorResponse(w http.ResponseWriter, response any) error {
-    w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
-
-    if e, ok := response.(uhttp.StatusCoder); ok {
-        w.WriteHeader(e.StatusCode())
-    }
-
-    return json.NewEncoder(w).Encode(response)
 }

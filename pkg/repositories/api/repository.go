@@ -1,6 +1,8 @@
 package api
 
 import (
+	"time"
+
 	"github.com/jacobbrewer1/vaulty/repositories"
 )
 
@@ -20,4 +22,6 @@ type GetReportsFilters struct {
 	Host        *string
 	Environment *string
 	State       *string
+	From        *time.Time
+	To          *time.Time
 }

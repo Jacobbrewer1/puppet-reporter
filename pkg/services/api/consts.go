@@ -22,6 +22,4 @@ const (
 	stateChanged = "CHANGED"
 
 	unknownLineNum = -1
-
-	defaultFileName = "report.yaml"
 )

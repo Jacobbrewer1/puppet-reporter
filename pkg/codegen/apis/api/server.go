@@ -31,7 +31,7 @@ type ServerInterface interface {
 
 	// Upload a report
 	// UploadReport (POST /upload)
-	UploadReport(l *slog.Logger, r *http.Request, body0 UploadReportJSONBody) (*ReportDetails, error)
+	UploadReport(l *slog.Logger, r *http.Request, body0 *UploadReportJSONBody) (*ReportDetails, error)
 }
 
 const (
@@ -89,7 +89,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	cw := uhttp.NewResponseWriter(w,
 		uhttp.WithDefaultStatusCode(http.StatusOK),
-		uhttp.WithDefaultHeader("X-Request-ID", uhttp.RequestIDFromContext(ctx)),
+		uhttp.WithDefaultHeader(uhttp.HeaderRequestID, uhttp.RequestIDFromContext(ctx)),
 		uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
 	)
 
@@ -206,6 +206,32 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// ------------- Optional query parameter "from" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"from",
+		r.URL.Query(),
+		&params.From,
+	); err != nil {
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "from", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+	if err := runtime.BindQueryParameter(
+		"form",
+		true,
+		false,
+		"to",
+		r.URL.Query(),
+		&params.To,
+	); err != nil {
+		siw.errorHandlerFunc(cw, ctx, &InvalidParamFormatError{ParamName: "to", Err: err})
+		return
+	}
+
 	h := siw.handler.GetReports
 	if siw.authz != nil {
 		h = siw.authz.GetReports
@@ -218,7 +244,7 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set(uhttp.HeaderContentType, "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
@@ -234,7 +260,7 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 	cw := uhttp.NewResponseWriter(w,
 		uhttp.WithDefaultStatusCode(http.StatusOK),
-		uhttp.WithDefaultHeader("X-Request-ID", uhttp.RequestIDFromContext(ctx)),
+		uhttp.WithDefaultHeader(uhttp.HeaderRequestID, uhttp.RequestIDFromContext(ctx)),
 		uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
 	)
 
@@ -270,7 +296,7 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set(uhttp.HeaderContentType, "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
@@ -286,7 +312,7 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 	ctx := r.Context()
 	cw := uhttp.NewResponseWriter(w,
 		uhttp.WithDefaultStatusCode(http.StatusOK),
-		uhttp.WithDefaultHeader("X-Request-ID", uhttp.RequestIDFromContext(ctx)),
+		uhttp.WithDefaultHeader(uhttp.HeaderRequestID, uhttp.RequestIDFromContext(ctx)),
 		uhttp.WithDefaultHeader(uhttp.HeaderContentType, uhttp.ContentTypeJSON),
 	)
 
@@ -296,7 +322,7 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 		}
 	}()
 
-	body := UploadReportJSONBody{
+	body := &UploadReportJSONBody{
 		File: new(openapi_types.File),
 	}
 
@@ -320,13 +346,52 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set(uhttp.HeaderContentType, "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		siw.errorHandlerFunc(cw, ctx, err)
 		return
 	}
+}
+
+// handleError handles returning a correctly-formatted error to the API caller.
+func handleError(w http.ResponseWriter, ctx context.Context, err error) {
+	l := logging.LoggerFromContext(ctx)
+	l.Error("Error handling request", slog.String(loggingKeyError, err.Error()))
+
+	e := new(uhttp.HTTPError)
+	if errors.As(err, &e) {
+		e.RequestID = uhttp.RequestIDFromContext(ctx)
+		_ = encodeErrorResponse(w, e)
+		return
+	}
+
+	code := http.StatusInternalServerError
+	if e, ok := err.(uhttp.StatusCoder); ok {
+		code = e.StatusCode()
+	}
+
+	_ = encodeErrorResponse(w, &uhttp.HTTPError{
+		Title:     http.StatusText(code),
+		Detail:    "error handling request",
+		Status:    code,
+		RequestID: uhttp.RequestIDFromContext(ctx),
+		Details: []interface{}{
+			err.Error(),
+		},
+	})
+}
+
+// encodeErrorResponse encodes input response as an RFC-7807-compliant response to w.
+func encodeErrorResponse(w http.ResponseWriter, response any) error {
+	w.Header().Set(uhttp.HeaderContentType, "application/problem+json; charset=utf-8")
+
+	if e, ok := response.(uhttp.StatusCoder); ok {
+		w.WriteHeader(e.StatusCode())
+	}
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type UnescapedCookieParamError struct {
@@ -422,39 +487,6 @@ func (e *TooManyValuesForParamError) Error() string {
 	return fmt.Sprintf("Expected one value for %s, got %d", e.ParamName, e.Count)
 }
 
-// handleError handles returning a correctly-formatted error to the API caller.
-func handleError(w http.ResponseWriter, ctx context.Context, err error) {
-	l := logging.LoggerFromContext(ctx)
-	l.Error("Error handling request", slog.String(loggingKeyError, err.Error()))
-
-	e := new(uhttp.HTTPError)
-	if errors.As(err, &e) {
-		e.RequestID = uhttp.RequestIDFromContext(ctx)
-		_ = encodeErrorResponse(w, e)
-		return
-	}
-
-	// All non-500 errors should be captured appropriately by the implementer. If the request is a valid
-	// internal failure, return a canned response to not expose internal detail.
-	_ = encodeErrorResponse(w, &uhttp.HTTPError{
-		Title:     http.StatusText(http.StatusInternalServerError),
-		Detail:    "error handling request",
-		Status:    http.StatusInternalServerError,
-		RequestID: uhttp.RequestIDFromContext(ctx),
-	})
-}
-
-// encodeErrorResponse encodes input response as an RFC-7807-compliant response to w.
-func encodeErrorResponse(w http.ResponseWriter, response any) error {
-	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
-
-	if e, ok := response.(uhttp.StatusCoder); ok {
-		w.WriteHeader(e.StatusCode())
-	}
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 // wrapHandler will wrap the handler with middlewares in the other specified
 // making the execution order the inverse of the parameter declaration
 func wrapHandler(handler http.HandlerFunc, middlewares ...mux.MiddlewareFunc) http.Handler {
@@ -466,28 +498,6 @@ func wrapHandler(handler http.HandlerFunc, middlewares ...mux.MiddlewareFunc) ht
 		wrappedHandler = middleware(wrappedHandler)
 	}
 	return wrappedHandler
-}
-
-// RegisterHandlers registers the api handlers.
-func RegisterHandlers(router *mux.Router, si ServerInterface, opts ...ServerOption) {
-	wrapper := ServerInterfaceWrapper{
-		authz:             nil,
-		handler:           si,
-		rateLimiter:       nil,
-		metricsMiddleware: nil,
-		errorHandlerFunc:  handleError,
-	}
-
-	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-		opt(&wrapper)
-	}
-
-	router.Use(uhttp.AuthHeaderToContextMux())
-	router.Use(uhttp.GenerateOrCopyRequestIDMux())
-
 }
 
 // RegisterUnauthedHandlers registers any api handlers which do not have any authentication on them. Most services will not have any.

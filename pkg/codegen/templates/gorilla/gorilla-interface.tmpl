@@ -19,7 +19,7 @@ type ServerInterface interface {
 {{- if $c }}{{ $form = ", multipartForm map[string][]string" }}{{ end -}}
 {{- end }}
 {{- end }}
-{{$opid}}(l *slog.Logger, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{$opid}}Params{{end}}{{range $i, $b := .Bodies}}, body{{$i}} {{$opid}}JSONBody{{end}}{{$form}}) ({{ $ret }}, error)
+{{$opid}}(l *slog.Logger, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{$opid}}Params{{end}}{{range $i, $b := .Bodies}}, body{{$i}} *{{$opid}}JSONBody{{end}}{{$form}}) ({{ $ret }}, error)
 {{end}}
 }
 
