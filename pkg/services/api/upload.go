@@ -10,6 +10,7 @@ import (
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/utils"
 	"github.com/jacobbrewer1/uhttp"
 )
 
@@ -36,12 +37,16 @@ func (s *service) UploadReport(l *slog.Logger, r *http.Request, body0 *api.Uploa
 	}
 
 	wg := new(sync.WaitGroup)
-
+	multiErr := utils.NewMultiError()
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		for i := range rep.Resources {
 			rep.Resources[i].ReportId = rep.Report.Id
+		}
+
+		if err := s.r.SaveResources(rep.Resources); err != nil {
+			multiErr.Add(fmt.Errorf("error saving resources: %w", err))
 		}
 	}()
 	go func() {
@@ -49,16 +54,16 @@ func (s *service) UploadReport(l *slog.Logger, r *http.Request, body0 *api.Uploa
 		for i := range rep.Logs {
 			rep.Logs[i].ReportId = rep.Report.Id
 		}
+
+		if err := s.r.SaveLogs(rep.Logs); err != nil {
+			multiErr.Add(fmt.Errorf("error saving logs: %w", err))
+		}
 	}()
 
 	wg.Wait()
 
-	if err := s.r.SaveResources(rep.Resources); err != nil {
-		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "error saving resources")
-	}
-
-	if err := s.r.SaveLogs(rep.Logs); err != nil {
-		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "error saving logs")
+	if multiErr.Err() != nil {
+		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, errors.New("error saving resources/logs"), []any{multiErr.ErrorStrings()}...)
 	}
 
 	go updateMetrics(rep)

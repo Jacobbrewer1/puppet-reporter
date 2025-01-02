@@ -13,7 +13,7 @@ type {{.TypeName}} {{if or (.IsAlias) (eq (len .Schema.EnumValues) 0) }}={{end}}
 const (
 	{{- $typeName := .TypeName }}
     {{- range $key, $value := .Schema.EnumValues }}
-    {{ $typeName }}_{{ $value }} {{ $typeName }} = "{{ $value }}"
+    {{ $typeName }}{{ $value }} {{ $typeName }} = "{{ $value }}"
     {{- end }}
 )
 
@@ -24,7 +24,7 @@ func (e *{{ .TypeName }}) IsValid() bool {
 
     switch *e {
     {{- range $key, $value := .Schema.EnumValues }}
-    case {{ $typeName }}_{{ $value }}:
+    case {{ $typeName }}{{ $value }}:
         return true
     {{- end }}
     default:

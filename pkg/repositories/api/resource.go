@@ -1,13 +1,15 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 )
 
 func (r *repository) SaveResources(resources []*models.Resource) error {
-	return models.InsertManyResources(r.db, resources...)
+	//return models.InsertManyResources(r.db, resources...)
+	return errors.New("test")
 }
 
 func (r *repository) GetResourcesByReportID(reportID int) ([]*models.Resource, error) {
