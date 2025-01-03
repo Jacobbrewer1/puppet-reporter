@@ -262,13 +262,13 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   {{end}}
   {{end}}
 
-  h := siw.handler.{{$opid}}
+  h := siw.handler
   if siw.authz != nil {
-    h = siw.authz.{{$opid}}
+    h = siw.authz
   }
 
   // Invoke the callback with all the unmarshalled arguments
-  resp, err := h(l, r{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}}{{if gt (len .Bodies) 0}}, body{{end}}{{$form}})
+  resp, err := h.{{$opid}}(l, r{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}}{{if gt (len .Bodies) 0}}, body{{end}}{{$form}})
   if err != nil {
     siw.errorHandlerFunc(cw, ctx, err)
     return

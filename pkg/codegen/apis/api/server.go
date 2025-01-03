@@ -232,13 +232,13 @@ func (siw *ServerInterfaceWrapper) GetReports(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	h := siw.handler.GetReports
+	h := siw.handler
 	if siw.authz != nil {
-		h = siw.authz.GetReports
+		h = siw.authz
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	resp, err := h(l, r, params)
+	resp, err := h.GetReports(l, r, params)
 	if err != nil {
 		siw.errorHandlerFunc(cw, ctx, err)
 		return
@@ -282,13 +282,13 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 
 	body.File.InitFromBytes(bdy, "file")
 
-	h := siw.handler.UploadReport
+	h := siw.handler
 	if siw.authz != nil {
-		h = siw.authz.UploadReport
+		h = siw.authz
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	resp, err := h(l, r, body)
+	resp, err := h.UploadReport(l, r, body)
 	if err != nil {
 		siw.errorHandlerFunc(cw, ctx, err)
 		return
@@ -334,13 +334,13 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	h := siw.handler.GetReport
+	h := siw.handler
 	if siw.authz != nil {
-		h = siw.authz.GetReport
+		h = siw.authz
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	resp, err := h(l, r, hash)
+	resp, err := h.GetReport(l, r, hash)
 	if err != nil {
 		siw.errorHandlerFunc(cw, ctx, err)
 		return
