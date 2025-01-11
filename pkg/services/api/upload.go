@@ -70,14 +70,24 @@ func (s *service) UploadReport(l *slog.Logger, r *http.Request, body0 *api.Uploa
 
 	respReport := s.modelAsApiReport(rep.Report)
 	respLogs := make([]api.LogMessage, len(rep.Logs))
-	for i, log := range rep.Logs {
-		respLogs[i] = *s.modelAsApiLogMessage(log)
-	}
-
 	respResources := make([]api.Resource, len(rep.Resources))
-	for i, resource := range rep.Resources {
-		respResources[i] = *s.modelAsApiResource(resource)
-	}
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i, log := range rep.Logs {
+			respLogs[i] = *s.modelAsApiLogMessage(log)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i, resource := range rep.Resources {
+			respResources[i] = *s.modelAsApiResource(resource)
+		}
+	}()
+
+	wg.Wait()
 
 	respReportDetails := &api.ReportDetails{
 		Logs:      respLogs,
