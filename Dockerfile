@@ -1,7 +1,7 @@
+ARG APP_NAME=app
 FROM docker.io/golang:alpine as build
 
-ARG APP_NAME=app
-ENV APP_NAME=${APP_NAME}
+ARG APP_NAME
 
 WORKDIR /build
 
