@@ -11,7 +11,7 @@ RUN go mod download
 RUN go mod tidy
 
 COPY . /build/
-RUN go build -o application cmd/${APP_NAME}/main.go
+RUN go build -o application cmd/${APP_NAME}/
 
 FROM docker.io/ubuntu:latest
 
