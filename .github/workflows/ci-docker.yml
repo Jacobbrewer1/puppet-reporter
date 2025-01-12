@@ -32,7 +32,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        build_app: [ "api" ]
+        build_app: [ "api", "web" ]
 
     steps:
       - name: Checkout repository
