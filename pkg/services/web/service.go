@@ -12,7 +12,7 @@ import (
 var templates embed.FS
 
 type Service interface {
-	Register(r *mux.Router)
+	Register(r *mux.Router, middlewares ...http.HandlerFunc)
 }
 
 type service struct {
@@ -26,6 +26,15 @@ func NewService(r repo.Repository) Service {
 	}
 }
 
-func (s *service) Register(r *mux.Router) {
-	r.HandleFunc("/", s.handleIndex).Methods(http.MethodGet)
+func (s *service) Register(r *mux.Router, middlewares ...http.HandlerFunc) {
+	r.HandleFunc("/", wrapHandler(s.indexHandler, middlewares...)).Methods(http.MethodGet)
+}
+
+func wrapHandler(h http.HandlerFunc, middlewares ...http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		for _, m := range middlewares {
+			m(w, r)
+		}
+		h(w, r)
+	}
 }
