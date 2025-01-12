@@ -6,12 +6,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+var appNameSuffix = utils.PackageName(&service{})
+
 var (
 	// totalReports is a counter for the total number of reports processed
 	totalReports = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:      "total_reports",
-			Namespace: utils.AppName,
+			Namespace: utils.AppName(appNameSuffix),
 			Help:      "Total number of reports processed",
 		},
 		[]string{"state", "environment"},
