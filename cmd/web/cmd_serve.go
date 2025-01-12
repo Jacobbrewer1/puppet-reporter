@@ -137,7 +137,7 @@ func (s *serveCmd) setup(ctx context.Context, r *mux.Router) (err error) {
 	slog.Info("Database connection generate from vault secrets")
 
 	repository := repo.NewRepository(db)
-	web.NewService(repository).Register(r)
+	web.NewService(repository).Register(r, metricsMiddleware)
 
 	r.HandleFunc("/metrics", uhttp.InternalOnly(promhttp.Handler())).Methods(http.MethodGet)
 	r.HandleFunc("/health", uhttp.InternalOnly(healthHandler(db))).Methods(http.MethodGet)
