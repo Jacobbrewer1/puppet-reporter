@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jacobbrewer1/goschema/usql"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	"github.com/jacobbrewer1/utils"
@@ -158,7 +159,7 @@ func parseStatus(rep *models.Report, y *simpleyaml.Yaml) error {
 		return errors.New("failed to get 'status' from YAML")
 	}
 
-	rep.State = strings.ToUpper(s)
+	rep.State = usql.NewEnum(strings.ToUpper(s))
 
 	return nil
 }

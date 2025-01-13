@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
@@ -14,17 +15,33 @@ import (
 )
 
 const (
-	defaultReportSearchRange = 7
+	indexTemplateReportListName = "report-list-element"
 )
 
-func (s *service) indexHandler(w http.ResponseWriter, r *http.Request) {
+func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
+	previousDaysCountStr := r.PostFormValue("num-days")
+	if previousDaysCountStr == "" {
+		uhttp.SendErrorMessageWithStatus(w, http.StatusBadRequest, "num-days not provided", nil)
+		return
+	}
+
+	previousDaysCount, err := strconv.Atoi(previousDaysCountStr)
+	if err != nil {
+		uhttp.SendErrorMessageWithStatus(w, http.StatusBadRequest, "num-days must be an integer", err)
+		return
+	}
+
 	now := time.Now().UTC()
+
+	// Set now to the end of the day
 	now = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
 
-	start := now.Add(-time.Hour * 24 * time.Duration(defaultReportSearchRange))
+	start := now.Add(-time.Hour * 24 * time.Duration(previousDaysCount))
+
+	// Set start to the beginning of the day
 	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
 
-	reps, err := s.r.GetLatestUniqueReportHosts(start, now)
+	reps, err := s.r.GetReportsInPeriod(start, now)
 	if err != nil {
 		switch {
 		case errors.Is(err, repo.ErrNoReports):
@@ -42,14 +59,13 @@ func (s *service) indexHandler(w http.ResponseWriter, r *http.Request) {
 		}).ParseFS(templates, "templates/index.gohtml"))
 
 	tmplTpe := struct {
-		Reports                   []*models.Report
-		ReportsDefaultSearchRange int
+		Reports []*models.Report
 	}{
-		Reports:                   reps,
-		ReportsDefaultSearchRange: defaultReportSearchRange,
+		Reports: reps,
 	}
 
-	if err := tmpl.Execute(w, tmplTpe); err != nil {
+	if err := tmpl.ExecuteTemplate(w, indexTemplateReportListName, tmplTpe); err != nil {
+		slog.Error("Error executing template", slog.String(logging.KeyError, err.Error()))
 		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error executing template", err)
 		return
 	}
