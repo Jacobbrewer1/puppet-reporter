@@ -21,18 +21,18 @@ type LogMessage = struct {
 
 // Report defines the model for report.
 type Report = struct {
-	Environment    string    `json:"environment"`
-	ExecutedAt     time.Time `json:"executed_at"`
-	Hash           string    `json:"hash"`
-	Host           string    `json:"host"`
-	Id             int64     `json:"id"`
-	PuppetVersion  float32   `json:"puppet_version"`
-	RuntimeSeconds int64     `json:"runtime_seconds"`
-	Status         string    `json:"status"`
-	TotalChanged   int64     `json:"total_changed"`
-	TotalFailed    int64     `json:"total_failed"`
-	TotalResources int64     `json:"total_resources"`
-	TotalSkipped   int64     `json:"total_skipped"`
+	Environment    string       `json:"environment"`
+	ExecutedAt     time.Time    `json:"executed_at"`
+	Hash           string       `json:"hash"`
+	Host           string       `json:"host"`
+	Id             int64        `json:"id"`
+	PuppetVersion  float32      `json:"puppet_version"`
+	RuntimeSeconds int64        `json:"runtime_seconds"`
+	Status         ReportStatus `json:"status"`
+	TotalChanged   int64        `json:"total_changed"`
+	TotalFailed    int64        `json:"total_failed"`
+	TotalResources int64        `json:"total_resources"`
+	TotalSkipped   int64        `json:"total_skipped"`
 }
 
 // ReportDetails defines the model for report_details.
@@ -46,6 +46,56 @@ type ReportDetails = struct {
 type ReportResponse = struct {
 	Reports []Report `json:"reports"`
 	Total   int64    `json:"total"`
+}
+
+// ReportStatus defines the model for report_status.
+type ReportStatus string
+
+// List of ReportStatus
+const (
+	ReportStatusCHANGED   ReportStatus = "CHANGED"
+	ReportStatusFAILED    ReportStatus = "FAILED"
+	ReportStatusUNCHANGED ReportStatus = "UNCHANGED"
+)
+
+func (e *ReportStatus) IsValid() bool {
+	if e == nil {
+		return false
+	}
+
+	switch *e {
+	case ReportStatusCHANGED:
+		return true
+	case ReportStatusFAILED:
+		return true
+	case ReportStatusUNCHANGED:
+		return true
+	default:
+		return false
+	}
+}
+
+func (e *ReportStatus) MarshalJSON() ([]byte, error) {
+	if !e.IsValid() {
+		return nil, uhttp.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("%s is not a valid ReportStatus", *e))
+	}
+
+	return json.Marshal(string(*e))
+}
+
+func (e *ReportStatus) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	e2 := ReportStatus(s)
+	if !e2.IsValid() {
+		return uhttp.NewHTTPError(http.StatusBadRequest, fmt.Errorf("%s is not a valid ReportStatus", s))
+	}
+
+	*e = e2
+	return nil
 }
 
 // Resource defines the model for resource.

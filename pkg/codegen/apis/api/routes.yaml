@@ -207,8 +207,7 @@ components:
           type: string
           example: PRODUCTION
         status:
-          type: string
-          example: CHANGED
+          $ref: '#/components/schemas/report_status'
         executed_at:
           type: string
           format: date-time
@@ -276,6 +275,13 @@ components:
           type: integer
           format: int64
           example: 10
+
+    report_status:
+      type: string
+      enum:
+        - CHANGED
+        - FAILED
+        - UNCHANGED
 
     status:
       type: string
