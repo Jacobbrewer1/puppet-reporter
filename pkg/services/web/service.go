@@ -28,6 +28,7 @@ func NewService(r repo.Repository) Service {
 
 func (s *service) Register(r *mux.Router, middlewares ...http.HandlerFunc) {
 	r.HandleFunc("/", wrapHandler(s.indexHandler, middlewares...)).Methods(http.MethodGet)
+	r.HandleFunc("/reports", wrapHandler(s.getReportListHandler, middlewares...)).Methods(http.MethodPost)
 }
 
 func wrapHandler(h http.HandlerFunc, middlewares ...http.HandlerFunc) http.HandlerFunc {

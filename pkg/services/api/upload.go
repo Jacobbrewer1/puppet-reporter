@@ -99,5 +99,5 @@ func (s *service) UploadReport(l *slog.Logger, r *http.Request, body0 *api.Uploa
 }
 
 func updateMetrics(rep *CompleteReport) {
-	totalReports.WithLabelValues(strings.ToLower(rep.Report.State), strings.ToLower(rep.Report.Environment)).Inc()
+	totalReports.WithLabelValues(strings.ToLower(string(rep.Report.State)), strings.ToLower(rep.Report.Environment)).Inc()
 }

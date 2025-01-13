@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jacobbrewer1/goschema/usql"
 	"github.com/jacobbrewer1/patcher"
 	"github.com/jacobbrewer1/patcher/inserter"
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,7 +26,7 @@ type Report struct {
 	Host          string    `db:"host"`
 	PuppetVersion float64   `db:"puppet_version"`
 	Environment   string    `db:"environment"`
-	State         string    `db:"state"`
+	State         usql.Enum `db:"state"`
 	ExecutedAt    time.Time `db:"executed_at"`
 	Runtime       int       `db:"runtime"`
 	Failed        int       `db:"failed"`
@@ -253,3 +254,10 @@ func ReportByHash(db DB, hash string) (*Report, error) {
 
 	return &m, nil
 }
+
+// Valid values for the 'State' enum column
+var (
+	ReportStateChanged   = usql.NewEnum("CHANGED")
+	ReportStateFailed    = usql.NewEnum("FAILED")
+	ReportStateUnchanged = usql.NewEnum("UNCHANGED")
+)
