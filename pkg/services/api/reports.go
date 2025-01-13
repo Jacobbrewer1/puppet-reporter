@@ -89,7 +89,7 @@ func (s *service) modelAsApiReport(report *models.Report) *api.Report {
 		Id:             int64(report.Id),
 		PuppetVersion:  float32(report.PuppetVersion),
 		RuntimeSeconds: int64(report.Runtime),
-		Status:         string(report.State),
+		Status:         api.ReportStatus(report.State),
 		TotalChanged:   int64(report.Changed),
 		TotalFailed:    int64(report.Failed),
 		TotalResources: int64(report.Total),
