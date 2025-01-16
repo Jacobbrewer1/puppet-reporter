@@ -2,7 +2,6 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -28,7 +27,8 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 
 	previousDaysCount, err := strconv.Atoi(previousDaysCountStr)
 	if err != nil {
-		uhttp.SendMessageWithStatus(w, http.StatusBadRequest, err.Error())
+		slog.Debug("Error parsing num-days", slog.String("num-days", previousDaysCountStr), slog.String(logging.KeyError, err.Error()))
+		uhttp.SendMessageWithStatus(w, http.StatusBadRequest, "num-days must be an integer")
 		return
 	}
 
@@ -49,7 +49,7 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 			reps = make([]*models.Report, 0)
 		default:
 			slog.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Errorf("error getting reports: %w", err).Error())
+			uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, "error getting reports")
 			return
 		}
 	}
@@ -67,7 +67,7 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := tmpl.ExecuteTemplate(w, indexTemplateReportListName, tmplTpe); err != nil {
 		slog.Error("Error executing template", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Errorf("error executing template: %w", err).Error())
+		uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, "error rendering template")
 		return
 	}
 }
