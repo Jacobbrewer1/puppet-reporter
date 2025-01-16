@@ -172,7 +172,6 @@ components:
           type: integer
           format: int64
           example: 10
-          minimum: 0
 
     report:
       type: object
