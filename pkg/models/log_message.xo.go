@@ -122,6 +122,9 @@ func (m *LogMessage) Patch(db DB, newT *LogMessage) error {
 		return errors.New("new log_message is nil")
 	}
 
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + LogMessageTableName))
+	defer t.ObserveDuration()
+
 	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(LogMessageTableName))
 	if err != nil {
 		return fmt.Errorf("new diff sql patch: %w", err)

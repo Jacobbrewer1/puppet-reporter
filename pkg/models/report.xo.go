@@ -133,6 +133,9 @@ func (m *Report) Patch(db DB, newT *Report) error {
 		return errors.New("new report is nil")
 	}
 
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + ReportTableName))
+	defer t.ObserveDuration()
+
 	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(ReportTableName))
 	if err != nil {
 		return fmt.Errorf("new diff sql patch: %w", err)

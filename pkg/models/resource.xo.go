@@ -127,6 +127,9 @@ func (m *Resource) Patch(db DB, newT *Resource) error {
 		return errors.New("new resource is nil")
 	}
 
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + ResourceTableName))
+	defer t.ObserveDuration()
+
 	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(ResourceTableName))
 	if err != nil {
 		return fmt.Errorf("new diff sql patch: %w", err)
