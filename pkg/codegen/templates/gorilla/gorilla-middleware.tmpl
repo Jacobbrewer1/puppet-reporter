@@ -318,7 +318,7 @@ func handleError(w http.ResponseWriter, ctx context.Context, err error) {
 
     e := new(uhttp.HTTPError)
     if errors.As(err, &e) {
-      e.RequestID = uhttp.RequestIDFromContext(ctx)
+      e.RequestId = uhttp.RequestIDFromContext(ctx)
       _ = encodeErrorResponse(w, e)
       return
     }
@@ -328,15 +328,17 @@ func handleError(w http.ResponseWriter, ctx context.Context, err error) {
         code = e.StatusCode()
     }
 
-    _ = encodeErrorResponse(w, &uhttp.HTTPError{
-       Title: http.StatusText(code),
-       Detail: "error handling request",
-       Status: code,
-       RequestID: uhttp.RequestIDFromContext(ctx),
-       Details: []interface{}{
-         err.Error(),
-       },
-   })
+	_ = encodeErrorResponse(w, &uhttp.HTTPError{
+		ErrorMessage: common.ErrorMessage{
+			Title:     http.StatusText(code),
+			Detail:    "error handling request",
+			Status:    code,
+			RequestId: uhttp.RequestIDFromContext(ctx),
+			Details: []interface{}{
+				err.Error(),
+			},
+		},
+	})
 }
 
 // encodeErrorResponse encodes input response as an RFC-7807-compliant response to w.

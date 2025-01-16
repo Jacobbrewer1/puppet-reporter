@@ -475,7 +475,7 @@ type GetReportsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ReportResponse
-	JSON400      *externalRef1.Message
+	JSON400      *externalRef1.ErrorMessage
 	JSON500      *externalRef1.ErrorMessage
 }
 
@@ -523,8 +523,8 @@ type GetReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ReportDetails
-	JSON400      *externalRef1.Message
-	JSON404      *externalRef1.Message
+	JSON400      *externalRef1.ErrorMessage
+	JSON404      *externalRef1.ErrorMessage
 	JSON500      *externalRef1.ErrorMessage
 }
 
@@ -601,7 +601,7 @@ func ParseGetReportsResponse(rsp *http.Response) (*GetReportsResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.Message
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -681,14 +681,14 @@ func ParseGetReportResponse(rsp *http.Response) (*GetReportResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.Message
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef1.Message
+		var dest externalRef1.ErrorMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

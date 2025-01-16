@@ -31,7 +31,7 @@ func (s *service) indexHandler(w http.ResponseWriter, r *http.Request) {
 			reps = make([]*models.Report, 0)
 		default:
 			slog.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error getting reports", err)
+			uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, "error getting reports")
 			return
 		}
 	}
@@ -50,7 +50,7 @@ func (s *service) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tmpl.Execute(w, tmplTpe); err != nil {
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error executing template", err)
+		uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, "error rendering template")
 		return
 	}
 }

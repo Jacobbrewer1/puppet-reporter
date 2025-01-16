@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   version: latest
-  title: Puppet Reporter
+  title: Puppet Reporter API
   description: This is the API documentation for the Puppet Reporter application
 
 tags:
@@ -38,7 +38,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '500':
           description: Internal Server Error
           content:
@@ -71,13 +71,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '404':
           description: Not Found
           content:
             application/json:
               schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '500':
           description: Internal Server Error
           content:
@@ -279,17 +279,17 @@ components:
     report_status:
       type: string
       enum:
-        - CHANGED
-        - FAILED
-        - UNCHANGED
+        - changed
+        - failed
+        - unchanged
 
     status:
       type: string
       enum:
-        - CHANGED
-        - FAILED
-        - SKIPPED
-        - UNCHANGED
+        - changed
+        - failed
+        - skipped
+        - unchanged
 
     log_message:
       type: object
