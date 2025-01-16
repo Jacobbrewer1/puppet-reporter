@@ -172,6 +172,7 @@ components:
           type: integer
           format: int64
           example: 10
+          minimum: 0
 
     report:
       type: object
@@ -279,17 +280,17 @@ components:
     report_status:
       type: string
       enum:
-        - CHANGED
-        - FAILED
-        - UNCHANGED
+        - changed
+        - failed
+        - unchanged
 
     status:
       type: string
       enum:
-        - CHANGED
-        - FAILED
-        - SKIPPED
-        - UNCHANGED
+        - changed
+        - failed
+        - skipped
+        - unchanged
 
     log_message:
       type: object

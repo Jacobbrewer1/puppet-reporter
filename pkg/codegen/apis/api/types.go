@@ -53,9 +53,9 @@ type ReportStatus string
 
 // List of ReportStatus
 const (
-	ReportStatusCHANGED   ReportStatus = "CHANGED"
-	ReportStatusFAILED    ReportStatus = "FAILED"
-	ReportStatusUNCHANGED ReportStatus = "UNCHANGED"
+	ReportStatuschanged   ReportStatus = "changed"
+	ReportStatusfailed    ReportStatus = "failed"
+	ReportStatusunchanged ReportStatus = "unchanged"
 )
 
 func (e *ReportStatus) IsValid() bool {
@@ -64,11 +64,11 @@ func (e *ReportStatus) IsValid() bool {
 	}
 
 	switch *e {
-	case ReportStatusCHANGED:
+	case ReportStatuschanged:
 		return true
-	case ReportStatusFAILED:
+	case ReportStatusfailed:
 		return true
-	case ReportStatusUNCHANGED:
+	case ReportStatusunchanged:
 		return true
 	default:
 		return false
@@ -112,10 +112,10 @@ type Status string
 
 // List of Status
 const (
-	StatusCHANGED   Status = "CHANGED"
-	StatusFAILED    Status = "FAILED"
-	StatusSKIPPED   Status = "SKIPPED"
-	StatusUNCHANGED Status = "UNCHANGED"
+	Statuschanged   Status = "changed"
+	Statusfailed    Status = "failed"
+	Statusskipped   Status = "skipped"
+	Statusunchanged Status = "unchanged"
 )
 
 func (e *Status) IsValid() bool {
@@ -124,13 +124,13 @@ func (e *Status) IsValid() bool {
 	}
 
 	switch *e {
-	case StatusCHANGED:
+	case Statuschanged:
 		return true
-	case StatusFAILED:
+	case Statusfailed:
 		return true
-	case StatusSKIPPED:
+	case Statusskipped:
 		return true
-	case StatusUNCHANGED:
+	case Statusunchanged:
 		return true
 	default:
 		return false
