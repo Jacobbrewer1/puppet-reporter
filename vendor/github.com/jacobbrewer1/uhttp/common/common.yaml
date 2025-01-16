@@ -12,12 +12,22 @@ components:
     error_message:
       type: object
       required:
-        - message
-        - error
+        - title
+        - detail
+        - status
+        - requestId
       properties:
-        message:
+        title:
+          type: string
+          example: 'Error'
+        detail:
           type: string
           example: 'Example error message'
-        error:
+        status:
+          type: integer
+          example: 400
+        details:
+          type: array
+        requestId:
           type: string
-          example: 'Example error'
+          example: '123456'

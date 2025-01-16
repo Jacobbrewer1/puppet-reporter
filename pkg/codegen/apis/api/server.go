@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	"github.com/jacobbrewer1/uhttp"
+	"github.com/jacobbrewer1/uhttp/common"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -362,7 +363,7 @@ func handleError(w http.ResponseWriter, ctx context.Context, err error) {
 
 	e := new(uhttp.HTTPError)
 	if errors.As(err, &e) {
-		e.RequestID = uhttp.RequestIDFromContext(ctx)
+		e.RequestId = uhttp.RequestIDFromContext(ctx)
 		_ = encodeErrorResponse(w, e)
 		return
 	}
@@ -373,12 +374,14 @@ func handleError(w http.ResponseWriter, ctx context.Context, err error) {
 	}
 
 	_ = encodeErrorResponse(w, &uhttp.HTTPError{
-		Title:     http.StatusText(code),
-		Detail:    "error handling request",
-		Status:    code,
-		RequestID: uhttp.RequestIDFromContext(ctx),
-		Details: []interface{}{
-			err.Error(),
+		ErrorMessage: common.ErrorMessage{
+			Title:     http.StatusText(code),
+			Detail:    "error handling request",
+			Status:    code,
+			RequestId: uhttp.RequestIDFromContext(ctx),
+			Details: &[]interface{}{
+				err.Error(),
+			},
 		},
 	})
 }
