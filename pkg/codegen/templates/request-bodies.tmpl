@@ -6,7 +6,7 @@
 type {{.TypeName}} {{if .IsAlias}}={{end}} {{.Schema.TypeDecl}}
 {{- if ne (printf "%sJSONBody" $opid) .Schema.TypeDecl }}
 // Temporary inclusion of type alias for backwards compatibility
-type {{$opid}}JSONBody = {{.Schema.TypeDecl}}
+type {{$opid}}RequestBody = {{.Schema.TypeDecl}}
 {{- end }}
 {{end}}
 {{end}}

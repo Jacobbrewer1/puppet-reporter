@@ -28,7 +28,7 @@ type ServerInterface interface {
 
 	// Upload a report
 	// UploadReport (POST /reports/upload)
-	UploadReport(l *slog.Logger, r *http.Request, body0 *UploadReportJSONBody) (*ReportDetails, error)
+	UploadReport(l *slog.Logger, r *http.Request, body0 *UploadReportRequestBody) (*ReportDetails, error)
 
 	// Get a report by hash
 	// GetReport (GET /reports/{hash})
@@ -271,7 +271,7 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 		}
 	}()
 
-	body := &UploadReportJSONBody{
+	body := &UploadReportRequestBody{
 		File: new(openapi_types.File),
 	}
 

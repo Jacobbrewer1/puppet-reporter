@@ -19,7 +19,7 @@ type ServerInterface interface {
 {{- if $c }}{{ $form = ", multipartForm map[string][]string" }}{{ end -}}
 {{- end }}
 {{- end }}
-{{$opid}}(l *slog.Logger, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{$opid}}Params{{end}}{{range $i, $b := .Bodies}}, body{{$i}} *{{$opid}}JSONBody{{end}}{{$form}}) ({{ $ret }}, error)
+{{$opid}}(l *slog.Logger, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{$opid}}Params{{end}}{{range $i, $b := .Bodies}}, body{{$i}} *{{$opid}}RequestBody{{end}}{{$form}}) ({{ $ret }}, error)
 {{end}}
 }
 
@@ -28,7 +28,7 @@ type ServerInterface interface {
 type ServerInterface interface {
   {{range .}}{{.SummaryAsComment }}{{$opid := .OperationId}}
   // ({{.Method}} {{.Path}})
-  {{.OperationId}}(w http.ResponseWriter, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params *{{.OperationId}}Params{{end}}{{range $i, $b := .Bodies}}{{if eq $b.ContentType "application/json"}}, body{{$i}} *{{$opid}}JSONBody{{end}}{{end}})
+  {{.OperationId}}(w http.ResponseWriter, r *http.Request{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params *{{.OperationId}}Params{{end}}{{range $i, $b := .Bodies}}{{if eq $b.ContentType "application/json"}}, body{{$i}} *{{$opid}}RequestBody{{end}}{{end}})
   {{end}}
 }
 */}}
