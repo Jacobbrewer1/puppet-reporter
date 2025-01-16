@@ -163,7 +163,7 @@ jobs:
         uses: thollander/actions-comment-pull-request@v3
         with:
           # Full file path to the plan output
-          file-path: ${{ github.workspace }}/pr-report.md
+          file-path: ${{ github.workspace }}/routes-validator-report.md
           pr-number: ${{ github.event.pull_request.number }}
           create-if-not-exists: true
 
