@@ -5,8 +5,8 @@
 // {{.TypeName}} defines body for {{$opid}} for {{$contentType}} ContentType.
 type {{.TypeName}} {{if .IsAlias}}={{end}} {{.Schema.TypeDecl}}
 {{- if ne (printf "%sJSONBody" $opid) .Schema.TypeDecl }}
-// Temporary inclusion of type alias for backwards compatibility
-type {{$opid}}JSONBody = {{.Schema.TypeDecl}}
+// {{$opid}}RequestBody defines a new type that can be used to unmarshal {{$contentType}} request body.
+type {{$opid}}RequestBody = {{.Schema.TypeDecl}}
 {{- end }}
 {{end}}
 {{end}}

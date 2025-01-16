@@ -220,4 +220,4 @@ type UploadReportFormdataBody struct {
 type UploadReportFormdataRequestBody UploadReportFormdataBody
 
 // Temporary inclusion of type alias for backwards compatibility
-type UploadReportJSONBody = UploadReportFormdataBody
+type UploadReportRequestBody = UploadReportFormdataBody
