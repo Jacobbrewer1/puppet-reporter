@@ -379,7 +379,7 @@ func handleError(w http.ResponseWriter, ctx context.Context, err error) {
 			Detail:    "error handling request",
 			Status:    code,
 			RequestId: uhttp.RequestIDFromContext(ctx),
-			Details: &[]interface{}{
+			Details: []interface{}{
 				err.Error(),
 			},
 		},
