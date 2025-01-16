@@ -28,7 +28,7 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 
 	previousDaysCount, err := strconv.Atoi(previousDaysCountStr)
 	if err != nil {
-		uhttp.SendMessageWithStatus(w, http.StatusBadRequest, fmt.Sprintf("num-days must be an integer: %s", err.Error()))
+		uhttp.SendMessageWithStatus(w, http.StatusBadRequest, fmt.Sprintf("num-days must be an integer: %v", err.Error()))
 		return
 	}
 
@@ -49,7 +49,7 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 			reps = make([]*models.Report, 0)
 		default:
 			slog.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error getting reports: %s", err.Error()))
+			uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error getting reports: %v", err.Error()))
 			return
 		}
 	}
@@ -67,7 +67,7 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := tmpl.ExecuteTemplate(w, indexTemplateReportListName, tmplTpe); err != nil {
 		slog.Error("Error executing template", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error executing template: %s", err.Error()))
+		uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error executing template: %v", err.Error()))
 		return
 	}
 }
