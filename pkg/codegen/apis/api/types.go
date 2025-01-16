@@ -219,5 +219,5 @@ type UploadReportFormdataBody struct {
 // UploadReportFormdataRequestBody defines body for UploadReport for application/x-www-form-urlencoded ContentType.
 type UploadReportFormdataRequestBody UploadReportFormdataBody
 
-// Temporary inclusion of type alias for backwards compatibility
+// UploadReportRequestBody defines a new type that can be used to unmarshal application/x-www-form-urlencoded request body.
 type UploadReportRequestBody = UploadReportFormdataBody
