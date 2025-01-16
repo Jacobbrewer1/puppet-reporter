@@ -24,7 +24,7 @@ func NotFoundHandler() http.HandlerFunc {
 			)
 		}
 
-		details := []string{
+		details := []any{
 			fmt.Sprintf("method: %s", r.Method),
 			fmt.Sprintf("path: %s", r.URL.Path),
 		}
@@ -33,7 +33,7 @@ func NotFoundHandler() http.HandlerFunc {
 			details = append(details, fmt.Sprintf("query: %s", r.URL.RawQuery))
 		}
 
-		msg := NewHTTPError(http.StatusNotFound, errNotFound, details)
+		msg := NewHTTPError(http.StatusNotFound, errNotFound, details...)
 		MustEncode(rw, http.StatusNotFound, msg)
 	}
 }

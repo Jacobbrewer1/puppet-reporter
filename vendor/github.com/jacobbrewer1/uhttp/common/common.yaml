@@ -1,4 +1,26 @@
 openapi: 3.0.0
+info:
+  title: 'Common HTTP components'
+  description: 'Common HTTP components'
+  version: '0.0.1'
+paths:
+  /:
+    get:
+      summary: 'Placeholder'
+      description: 'Placeholder'
+      responses:
+        '200':
+          description: 'Placeholder'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/message'
+        '400':
+          description: 'Placeholder'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error_message'
 components:
   schemas:
     message:
@@ -15,7 +37,8 @@ components:
         - title
         - detail
         - status
-        - requestId
+        - details
+        - request_id
       properties:
         title:
           type: string
@@ -26,8 +49,10 @@ components:
         status:
           type: integer
           example: 400
+          minimum: 100
+          maximum: 599
         details:
           type: array
-        requestId:
+        request_id:
           type: string
           example: '123456'

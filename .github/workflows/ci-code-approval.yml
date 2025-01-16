@@ -159,4 +159,3 @@ jobs:
           file-path: ${{ github.workspace }}/routes-validator-report.md
           pr-number: ${{ github.event.pull_request.number }}
           create-if-not-exists: true
-

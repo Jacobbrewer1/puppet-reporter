@@ -42,7 +42,7 @@ func NewHTTPError(code int, err error, details ...any) *HTTPError {
 	}
 
 	if len(details) > 0 {
-		errMsg.Details = &details
+		errMsg.Details = details
 	}
 
 	return &HTTPError{

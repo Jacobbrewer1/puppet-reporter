@@ -9,7 +9,7 @@ require (
 	github.com/jacobbrewer1/goschema v0.0.13
 	github.com/jacobbrewer1/pagefilter v0.1.6
 	github.com/jacobbrewer1/patcher v0.1.13
-	github.com/jacobbrewer1/uhttp v0.0.8
+	github.com/jacobbrewer1/uhttp v0.0.9
 	github.com/jacobbrewer1/utils v0.0.1
 	github.com/jacobbrewer1/vaulty v0.1.6
 	github.com/jmoiron/sqlx v1.4.0

@@ -38,7 +38,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '500':
           description: Internal Server Error
           content:
@@ -71,13 +71,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '404':
           description: Not Found
           content:
             application/json:
               schema:
-                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/message'
+                $ref: '../../../../vendor/github.com/jacobbrewer1/uhttp/common/common.yaml#/components/schemas/error_message'
         '500':
           description: Internal Server Error
           content:
