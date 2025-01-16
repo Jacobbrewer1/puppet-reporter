@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -31,7 +32,7 @@ func (s *service) indexHandler(w http.ResponseWriter, r *http.Request) {
 			reps = make([]*models.Report, 0)
 		default:
 			slog.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error getting reports", err)
+			uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error getting reports: %s", err.Error()))
 			return
 		}
 	}
@@ -50,7 +51,7 @@ func (s *service) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tmpl.Execute(w, tmplTpe); err != nil {
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error executing template", err)
+		uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error executing template: %s", err.Error()))
 		return
 	}
 }

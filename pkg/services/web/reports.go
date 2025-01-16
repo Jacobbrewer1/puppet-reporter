@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -21,13 +22,13 @@ const (
 func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 	previousDaysCountStr := r.PostFormValue("num-days")
 	if previousDaysCountStr == "" {
-		uhttp.SendErrorMessageWithStatus(w, http.StatusBadRequest, "num-days not provided", nil)
+		uhttp.SendMessageWithStatus(w, http.StatusBadRequest, "num-days must be provided")
 		return
 	}
 
 	previousDaysCount, err := strconv.Atoi(previousDaysCountStr)
 	if err != nil {
-		uhttp.SendErrorMessageWithStatus(w, http.StatusBadRequest, "num-days must be an integer", err)
+		uhttp.SendMessageWithStatus(w, http.StatusBadRequest, fmt.Sprintf("num-days must be an integer: %s", err.Error()))
 		return
 	}
 
@@ -48,7 +49,7 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 			reps = make([]*models.Report, 0)
 		default:
 			slog.Error("Error getting reports", slog.String(logging.KeyError, err.Error()))
-			uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error getting reports", err)
+			uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error getting reports: %s", err.Error()))
 			return
 		}
 	}
@@ -66,7 +67,7 @@ func (s *service) getReportListHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := tmpl.ExecuteTemplate(w, indexTemplateReportListName, tmplTpe); err != nil {
 		slog.Error("Error executing template", slog.String(logging.KeyError, err.Error()))
-		uhttp.SendErrorMessageWithStatus(w, http.StatusInternalServerError, "Error executing template", err)
+		uhttp.SendMessageWithStatus(w, http.StatusInternalServerError, fmt.Sprintf("Error executing template: %s", err.Error()))
 		return
 	}
 }
