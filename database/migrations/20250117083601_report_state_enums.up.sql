@@ -1,0 +1,1 @@
+alter table report modify column state enum ('changed', 'failed', 'unchanged') not null;

@@ -102,9 +102,9 @@ func (s *service) GetReport(l *slog.Logger, r *http.Request, hash string) (*api.
 	if err != nil {
 		switch {
 		case errors.Is(err, repo.ErrReportNotFound):
-			return nil, uhttp.NewHTTPError(http.StatusNotFound, err, "report not found")
+			return nil, uhttp.NewHTTPError(http.StatusNotFound, err, "report not found", fmt.Sprintf("hash: %s", hash))
 		default:
-			return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "failed to get report")
+			return nil, uhttp.NewHTTPError(http.StatusInternalServerError, err, "failed to get report", fmt.Sprintf("hash: %s", hash))
 		}
 	}
 
