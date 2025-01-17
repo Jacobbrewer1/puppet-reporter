@@ -1,0 +1,1 @@
+alter table report modify column state text not null;
