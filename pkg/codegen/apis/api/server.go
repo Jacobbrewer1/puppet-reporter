@@ -323,7 +323,6 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 
 	// ------------- Path parameter "hash" -------------
 	var hash string
-
 	if err := runtime.BindStyledParameterWithOptions(
 		"simple",
 		"hash",

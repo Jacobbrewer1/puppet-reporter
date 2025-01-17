@@ -73,17 +73,15 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
 
   {{range .PathParams}}// ------------- Path parameter "{{.ParamName}}" -------------
   var {{$varName := .GoVariableName}}{{$varName}} {{.TypeDef}}
-  {{if .IsPassThrough}}
-  {{$varName}} = mux.Vars(r)["{{.ParamName}}"]
-  {{end}}
-  {{if .IsJson}}
+  {{- if .IsPassThrough }}{{$varName}} = mux.Vars(r)["{{.ParamName}}"]{{ end }}
+  {{- if .IsJson }}
   err = json.Unmarshal([]byte(mux.Vars(r)["{{.ParamName}}"]), &{{$varName}})
   if err != nil {
     siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "{{.ParamName}}", Err: err})
     return
   }
   {{end}}
-  {{if .IsStyled}}
+  {{- if .IsStyled }}
   if err := runtime.BindStyledParameterWithOptions(
     "{{.Style}}",
     "{{.ParamName}}",
