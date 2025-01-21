@@ -13,6 +13,7 @@ type ServerInterfaceWrapper struct {
     rateLimiter RateLimiterFunc
     metricsMiddleware MetricsMiddlewareFunc
     errorHandlerFunc ErrorHandlerFunc
+    isInternalAPI bool
 }
 
 // WithAuthorization applies the passed authorization middleware to the server.
@@ -40,6 +41,13 @@ func WithErrorHandlerFunc(errorHandlerFunc ErrorHandlerFunc) ServerOption {
 func WithMetricsMiddleware(middleware MetricsMiddlewareFunc) ServerOption {
     return func(s *ServerInterfaceWrapper) {
         s.metricsMiddleware = middleware
+    }
+}
+
+// WithInternalAPI sets the server as an internal API.
+func WithInternalAPI(isInternalAPI bool) ServerOption {
+    return func(s *ServerInterfaceWrapper) {
+        s.isInternalAPI = isInternalAPI
     }
 }
 
@@ -239,24 +247,21 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   {{with .TypeDef $opid}}
     // ------------- Body parameter for {{$opid}} for {{$contentType}} ContentType -------------
     body := new({{.TypeName}})
-    if err := json.NewDecoder(r.Body).Decode(body); err != nil {
-       siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
-       return
+    if err := siw.parseRequestBody(r, body); err != nil {
+        siw.errorHandlerFunc(cw, ctx, err)
+        return
     }
   {{end}}
   {{else if eq $contentType "application/x-www-form-urlencoded" }}
   {{/* If the defined body is a file, then try and get the file into the expected type */}}
-  body := &{{$opid}}RequestBody{
-    File: new(openapi_types.File),
-  }
+    body := &{{$opid}}RequestBody{
+      File: new(openapi_types.File),
+    }
 
-  bdy, err := io.ReadAll(r.Body)
-  if err != nil {
-    siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
-    return
-  }
-
-  body.File.InitFromBytes(bdy, "file")
+    if err := siw.parseRequestBody(r, body.File); err != nil {
+        siw.errorHandlerFunc(cw, ctx, err)
+        return
+    }
   {{end}}
   {{end}}
 
@@ -308,6 +313,41 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(w http.ResponseWriter, r *http.Requ
   }
 }
 {{end}}
+
+// parseRequestBody parses the request body into the expected type.
+func (siw *ServerInterfaceWrapper) parseRequestBody(r *http.Request, dest any) error {
+    if r.Body == http.NoBody {
+        return &UnmarshalingBodyError{Err: errors.New("empty body")}
+    }
+
+    contentType := r.Header.Get(uhttp.HeaderContentType)
+    switch contentType {
+    case "application/json":
+        decoder := json.NewDecoder(r.Body)
+        if !siw.isInternalAPI {
+            decoder.DisallowUnknownFields()
+        }
+        if err := decoder.Decode(dest); err != nil {
+            return &UnmarshalingBodyError{Err: err}
+        }
+    case "application/x-www-form-urlencoded":
+        bdy, err := io.ReadAll(r.Body)
+        if err != nil {
+          return &UnmarshalingBodyError{Err: err}
+        }
+
+        body, ok := dest.(*openapi_types.File)
+        if !ok {
+            return &UnmarshalingBodyError{Err: fmt.Errorf("expected *openapi_types.FormData, got %T", dest)}
+        }
+
+        body.InitFromBytes(bdy, "file")
+    default:
+        return &UnsupportedContentTypeError{ContentType: contentType}
+    }
+
+    return nil
+}
 
 // handleError handles returning a correctly-formatted error to the API caller.
 func handleError(w http.ResponseWriter, ctx context.Context, err error) {
@@ -365,6 +405,30 @@ func (e *UnescapedCookieParamError) Error() string {
 
 func (e *UnescapedCookieParamError) Unwrap() error {
     return e.Err
+}
+
+type UnsupportedContentTypeError struct {
+    ContentType string
+}
+
+func (e *UnsupportedContentTypeError) StatusCode() int {
+    return http.StatusUnsupportedMediaType
+}
+
+func (e *UnsupportedContentTypeError) Error() string {
+    return fmt.Sprintf("Unsupported content type: %s", e.ContentType)
+}
+
+type UnmarshalingBodyError struct {
+    Err error
+}
+
+func (e *UnmarshalingBodyError) StatusCode() int {
+    return http.StatusBadRequest
+}
+
+func (e *UnmarshalingBodyError) Error() string {
+    return fmt.Sprintf("Error unmarshaling request body: %s", e.Err.Error())
 }
 
 type UnmarshalingParamError struct {

@@ -362,7 +362,7 @@ func NewUploadReportRequestWithBody(server string, contentType string, body io.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/upload")
+	operationPath := fmt.Sprintf("/reports")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
