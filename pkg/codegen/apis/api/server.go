@@ -389,7 +389,7 @@ func (siw *ServerInterfaceWrapper) parseRequestBody(r *http.Request, dest any) e
 
 		body.InitFromBytes(bdy, "file")
 	default:
-		return http.ErrNotSupported
+		return &UnsupportedContentTypeError{ContentType: contentType}
 	}
 
 	return nil
@@ -451,6 +451,18 @@ func (e *UnescapedCookieParamError) Error() string {
 
 func (e *UnescapedCookieParamError) Unwrap() error {
 	return e.Err
+}
+
+type UnsupportedContentTypeError struct {
+	ContentType string
+}
+
+func (e *UnsupportedContentTypeError) StatusCode() int {
+	return http.StatusUnsupportedMediaType
+}
+
+func (e *UnsupportedContentTypeError) Error() string {
+	return fmt.Sprintf("Unsupported content type: %s", e.ContentType)
 }
 
 type UnmarshalingBodyError struct {
