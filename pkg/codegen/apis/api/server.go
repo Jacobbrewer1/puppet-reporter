@@ -50,6 +50,7 @@ type ServerInterfaceWrapper struct {
 	rateLimiter       RateLimiterFunc
 	metricsMiddleware MetricsMiddlewareFunc
 	errorHandlerFunc  ErrorHandlerFunc
+	isInternalAPI     bool
 }
 
 // WithAuthorization applies the passed authorization middleware to the server.
@@ -77,6 +78,13 @@ func WithErrorHandlerFunc(errorHandlerFunc ErrorHandlerFunc) ServerOption {
 func WithMetricsMiddleware(middleware MetricsMiddlewareFunc) ServerOption {
 	return func(s *ServerInterfaceWrapper) {
 		s.metricsMiddleware = middleware
+	}
+}
+
+// WithInternalAPI sets the server as an internal API.
+func WithInternalAPI(isInternalAPI bool) ServerOption {
+	return func(s *ServerInterfaceWrapper) {
+		s.isInternalAPI = isInternalAPI
 	}
 }
 
@@ -275,13 +283,10 @@ func (siw *ServerInterfaceWrapper) UploadReport(w http.ResponseWriter, r *http.R
 		File: new(openapi_types.File),
 	}
 
-	bdy, err := io.ReadAll(r.Body)
-	if err != nil {
-		siw.errorHandlerFunc(cw, ctx, &UnmarshalingParamError{ParamName: "body", Err: err})
+	if err := siw.parseRequestBody(r, body.File); err != nil {
+		siw.errorHandlerFunc(cw, ctx, err)
 		return
 	}
-
-	body.File.InitFromBytes(bdy, "file")
 
 	h := siw.handler
 	if siw.authz != nil {
@@ -355,6 +360,41 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// parseRequestBody parses the request body into the expected type.
+func (siw *ServerInterfaceWrapper) parseRequestBody(r *http.Request, dest any) error {
+	if r.Body == http.NoBody {
+		return nil
+	}
+
+	contentType := r.Header.Get(uhttp.HeaderContentType)
+	switch contentType {
+	case "application/json":
+		decoder := json.NewDecoder(r.Body)
+		if !siw.isInternalAPI {
+			decoder.DisallowUnknownFields()
+		}
+		if err := decoder.Decode(dest); err != nil {
+			return &UnmarshalingBodyError{ExpectedType: "application/json", Err: err}
+		}
+	case "application/x-www-form-urlencoded":
+		bdy, err := io.ReadAll(r.Body)
+		if err != nil {
+			return &UnmarshalingBodyError{ExpectedType: "application/x-www-form-urlencoded", Err: err}
+		}
+
+		body, ok := dest.(*openapi_types.File)
+		if !ok {
+			return &UnmarshalingBodyError{ExpectedType: "application/x-www-form-urlencoded", Err: fmt.Errorf("expected *openapi_types.FormData, got %T", dest)}
+		}
+
+		body.InitFromBytes(bdy, "file")
+	default:
+		return http.ErrNotSupported
+	}
+
+	return nil
+}
+
 // handleError handles returning a correctly-formatted error to the API caller.
 func handleError(w http.ResponseWriter, ctx context.Context, err error) {
 	l := logging.LoggerFromContext(ctx)
@@ -411,6 +451,19 @@ func (e *UnescapedCookieParamError) Error() string {
 
 func (e *UnescapedCookieParamError) Unwrap() error {
 	return e.Err
+}
+
+type UnmarshalingBodyError struct {
+	ExpectedType string
+	Err          error
+}
+
+func (e *UnmarshalingBodyError) StatusCode() int {
+	return http.StatusBadRequest
+}
+
+func (e *UnmarshalingBodyError) Error() string {
+	return fmt.Sprintf("Error unmarshaling request body as %s: %s", e.ExpectedType, e.Err.Error())
 }
 
 type UnmarshalingParamError struct {
