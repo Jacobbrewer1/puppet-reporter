@@ -84,8 +84,8 @@ github.com/iancoleman/strcase v0.2.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47
 github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/jacobbrewer1/goschema v0.0.14 h1:pVZ29eaPuNPmgRzB9A/3b1+sDD8X1egAWXuUrzxR99w=
-github.com/jacobbrewer1/goschema v0.0.14/go.mod h1:1tQLNhE0jvb5EebvpHptb9hY5jVhj1lix+cG0xPjkhA=
+github.com/jacobbrewer1/goschema v0.0.15 h1:LzmtdSiifm2QVtBqWpmYAeaz1wtrU7c7gxnNY33tZYo=
+github.com/jacobbrewer1/goschema v0.0.15/go.mod h1:6C7vfoqBEfN0sNjz3twTaWD7w9PyoUAL5yujjN2gGMk=
 github.com/jacobbrewer1/pagefilter v0.1.6 h1:X7qfmPd4xgaTwoV5BPCHgmKeNz6PTRyjgNA7TVxMnKg=
 github.com/jacobbrewer1/pagefilter v0.1.6/go.mod h1:leTL8G1StBjLTAiFSLptHTQsHZ5JfvAUCoOWwmz9dPI=
 github.com/jacobbrewer1/patcher v0.1.15 h1:DK0xrBKlPPSNt+mXUY1AuZ7lydSin8EcHkPMt/68aIE=
