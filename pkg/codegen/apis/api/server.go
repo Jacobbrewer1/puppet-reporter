@@ -27,7 +27,7 @@ type ServerInterface interface {
 	GetReports(l *slog.Logger, r *http.Request, params GetReportsParams) (*ReportResponse, error)
 
 	// Upload a report
-	// UploadReport (POST /reports/upload)
+	// UploadReport (POST /reports)
 	UploadReport(l *slog.Logger, r *http.Request, body0 *UploadReportRequestBody) (*ReportDetails, error)
 
 	// Get a report by hash
@@ -363,7 +363,7 @@ func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Requ
 // parseRequestBody parses the request body into the expected type.
 func (siw *ServerInterfaceWrapper) parseRequestBody(r *http.Request, dest any) error {
 	if r.Body == http.NoBody {
-		return nil
+		return &UnmarshalingBodyError{Err: errors.New("empty body")}
 	}
 
 	contentType := r.Header.Get(uhttp.HeaderContentType)
@@ -374,17 +374,17 @@ func (siw *ServerInterfaceWrapper) parseRequestBody(r *http.Request, dest any) e
 			decoder.DisallowUnknownFields()
 		}
 		if err := decoder.Decode(dest); err != nil {
-			return &UnmarshalingBodyError{ExpectedType: "application/json", Err: err}
+			return &UnmarshalingBodyError{Err: err}
 		}
 	case "application/x-www-form-urlencoded":
 		bdy, err := io.ReadAll(r.Body)
 		if err != nil {
-			return &UnmarshalingBodyError{ExpectedType: "application/x-www-form-urlencoded", Err: err}
+			return &UnmarshalingBodyError{Err: err}
 		}
 
 		body, ok := dest.(*openapi_types.File)
 		if !ok {
-			return &UnmarshalingBodyError{ExpectedType: "application/x-www-form-urlencoded", Err: fmt.Errorf("expected *openapi_types.FormData, got %T", dest)}
+			return &UnmarshalingBodyError{Err: fmt.Errorf("expected *openapi_types.FormData, got %T", dest)}
 		}
 
 		body.InitFromBytes(bdy, "file")
@@ -466,8 +466,7 @@ func (e *UnsupportedContentTypeError) Error() string {
 }
 
 type UnmarshalingBodyError struct {
-	ExpectedType string
-	Err          error
+	Err error
 }
 
 func (e *UnmarshalingBodyError) StatusCode() int {
@@ -475,7 +474,7 @@ func (e *UnmarshalingBodyError) StatusCode() int {
 }
 
 func (e *UnmarshalingBodyError) Error() string {
-	return fmt.Sprintf("Error unmarshaling request body as %s: %s", e.ExpectedType, e.Err.Error())
+	return fmt.Sprintf("Error unmarshaling request body: %s", e.Err.Error())
 }
 
 type UnmarshalingParamError struct {
@@ -588,6 +587,6 @@ func RegisterUnauthedHandlers(router *mux.Router, si ServerInterface, opts ...Se
 	router.Use(uhttp.GenerateOrCopyRequestIDMux())
 
 	router.Methods(http.MethodGet).Path("/reports").Handler(wrapHandler(wrapper.GetReports))
-	router.Methods(http.MethodPost).Path("/reports/upload").Handler(wrapHandler(wrapper.UploadReport))
+	router.Methods(http.MethodPost).Path("/reports").Handler(wrapHandler(wrapper.UploadReport))
 	router.Methods(http.MethodGet).Path("/reports/{hash}").Handler(wrapHandler(wrapper.GetReport))
 }
