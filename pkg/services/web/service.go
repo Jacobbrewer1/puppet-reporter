@@ -12,10 +12,6 @@ import (
 //go:embed templates/*
 var localTemplates embed.FS
 
-const (
-	htmxHeaderName = "HX-Request"
-)
-
 type Service interface {
 	Register(r *mux.Router, middleware ...http.HandlerFunc)
 }
