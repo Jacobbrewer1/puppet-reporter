@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/apis/specs/api"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 	"github.com/jacobbrewer1/uhttp"
 	"github.com/jacobbrewer1/utils"

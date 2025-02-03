@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/jacobbrewer1/pagefilter"
-	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/apis/specs/api"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/models"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 	"github.com/jacobbrewer1/uhttp"

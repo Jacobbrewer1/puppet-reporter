@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/apis/specs/api"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 )
 
