@@ -6,6 +6,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jacobbrewer1/goschema/usql"
 	"github.com/jacobbrewer1/patcher"
@@ -122,38 +123,6 @@ func (m *Resource) Update(db DB) error {
 	return nil
 }
 
-func (m *Resource) Patch(db DB, newT *Resource) error {
-	if newT == nil {
-		return errors.New("new resource is nil")
-	}
-
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + ResourceTableName))
-	defer t.ObserveDuration()
-
-	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(ResourceTableName))
-	if err != nil {
-		return fmt.Errorf("new diff sql patch: %w", err)
-	}
-
-	sqlstr, args, err := res.GenerateSQL()
-	if err != nil {
-		switch {
-		case errors.Is(err, patcher.ErrNoChanges):
-			return nil
-		default:
-			return fmt.Errorf("failed to create patch: %w", err)
-		}
-	}
-
-	DBLog(sqlstr, args...)
-	_, err = db.Exec(sqlstr, args...)
-	if err != nil {
-		return fmt.Errorf("failed to execute patch: %w", err)
-	}
-
-	return nil
-}
-
 // InsertWithUpdate inserts the Resource to the database, and tries to update
 // on unique constraint violations.
 func (m *Resource) InsertWithUpdate(db DB) error {
@@ -232,11 +201,104 @@ func ResourceById(db DB, id int) (*Resource, error) {
 	return &m, nil
 }
 
+type resourcePKWherer struct {
+	ids []interface{}
+}
+
+func (m resourcePKWherer) Where() (string, []interface{}) {
+	return "`id` = ?", m.ids
+}
+
+// Patch updates the Resource in the database.
+//
+// Generated from primary key.
+func (m *Resource) Patch(db DB, newT *Resource) error {
+	if newT == nil {
+		return errors.New("new primary is nil")
+	}
+
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + ResourceTableName))
+	defer t.ObserveDuration()
+
+	res, err := patcher.NewDiffSQLPatch(
+		m,
+		newT,
+		patcher.WithTable(ResourceTableName),
+		patcher.WithWhere(&resourcePKWherer{
+			ids: []interface{}{m.Id},
+		}),
+		patcher.WithIgnoredFields(
+			"Id",
+		),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, patcher.ErrNoChanges):
+			return nil
+		default:
+			return fmt.Errorf("new diff sql patch: %w", err)
+		}
+	}
+
+	sqlstr, args, err := res.GenerateSQL()
+	if err != nil {
+		return fmt.Errorf("failed to generate patch: %w", err)
+	}
+
+	DBLog(sqlstr, args...)
+	_, err = db.Exec(sqlstr, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute patch: %w", err)
+	}
+
+	return nil
+}
+
 // GetReportIdReport Gets an instance of Report
 //
 // Generated from constraint resource_report_id_fk
 func (m *Resource) GetReportIdReport(db DB) (*Report, error) {
 	return ReportById(db, m.ReportId)
+}
+
+// GetAllResources retrieves all rows from 'resource' as a slice of Resource.
+//
+// Generated from table 'resource'.
+func GetAllResources(db DB, wheres ...patcher.Wherer) ([]*Resource, error) {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_all_" + ResourceTableName))
+	defer t.ObserveDuration()
+
+	args := make([]any, 0)
+	builder := new(strings.Builder)
+	builder.WriteString("SELECT `id`, `report_id`, `status`, `name`, `type`, `file`, `line`")
+	builder.WriteString(" FROM resource t")
+
+	if len(wheres) > 0 {
+		builder.WriteString(" WHERE ")
+		for i, where := range wheres {
+			if i > 0 {
+				wtStr := patcher.WhereTypeAnd // default to AND
+				wt, ok := where.(patcher.WhereTyper)
+				if ok && wt.WhereType().IsValid() {
+					wtStr = wt.WhereType()
+				}
+				builder.WriteString(string(wtStr) + " ")
+			}
+			whereStr, whereArgs := where.Where()
+			builder.WriteString(whereStr)
+			args = append(args, whereArgs...)
+		}
+	}
+
+	sqlstr := builder.String()
+	DBLog(sqlstr, args...)
+
+	m := make([]*Resource, 0)
+	if err := db.Select(&m, sqlstr, args...); err != nil {
+		return nil, fmt.Errorf("failed to get all Resource: %w", err)
+	}
+
+	return m, nil
 }
 
 // Valid values for the 'Status' enum column

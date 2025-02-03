@@ -6,6 +6,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jacobbrewer1/goschema/usql"
@@ -128,38 +129,6 @@ func (m *Report) Update(db DB) error {
 	return nil
 }
 
-func (m *Report) Patch(db DB, newT *Report) error {
-	if newT == nil {
-		return errors.New("new report is nil")
-	}
-
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + ReportTableName))
-	defer t.ObserveDuration()
-
-	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(ReportTableName))
-	if err != nil {
-		return fmt.Errorf("new diff sql patch: %w", err)
-	}
-
-	sqlstr, args, err := res.GenerateSQL()
-	if err != nil {
-		switch {
-		case errors.Is(err, patcher.ErrNoChanges):
-			return nil
-		default:
-			return fmt.Errorf("failed to create patch: %w", err)
-		}
-	}
-
-	DBLog(sqlstr, args...)
-	_, err = db.Exec(sqlstr, args...)
-	if err != nil {
-		return fmt.Errorf("failed to execute patch: %w", err)
-	}
-
-	return nil
-}
-
 // InsertWithUpdate inserts the Report to the database, and tries to update
 // on unique constraint violations.
 func (m *Report) InsertWithUpdate(db DB) error {
@@ -238,6 +207,59 @@ func ReportById(db DB, id int) (*Report, error) {
 	return &m, nil
 }
 
+type reportPKWherer struct {
+	ids []interface{}
+}
+
+func (m reportPKWherer) Where() (string, []interface{}) {
+	return "`id` = ?", m.ids
+}
+
+// Patch updates the Report in the database.
+//
+// Generated from primary key.
+func (m *Report) Patch(db DB, newT *Report) error {
+	if newT == nil {
+		return errors.New("new primary is nil")
+	}
+
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + ReportTableName))
+	defer t.ObserveDuration()
+
+	res, err := patcher.NewDiffSQLPatch(
+		m,
+		newT,
+		patcher.WithTable(ReportTableName),
+		patcher.WithWhere(&reportPKWherer{
+			ids: []interface{}{m.Id},
+		}),
+		patcher.WithIgnoredFields(
+			"Id",
+		),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, patcher.ErrNoChanges):
+			return nil
+		default:
+			return fmt.Errorf("new diff sql patch: %w", err)
+		}
+	}
+
+	sqlstr, args, err := res.GenerateSQL()
+	if err != nil {
+		return fmt.Errorf("failed to generate patch: %w", err)
+	}
+
+	DBLog(sqlstr, args...)
+	_, err = db.Exec(sqlstr, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute patch: %w", err)
+	}
+
+	return nil
+}
+
 // ReportByHash retrieves a row from 'report' as a *Report.
 //
 // Generated from index 'report_hash_unique' of type 'unique'.
@@ -256,6 +278,46 @@ func ReportByHash(db DB, hash string) (*Report, error) {
 	}
 
 	return &m, nil
+}
+
+// GetAllReports retrieves all rows from 'report' as a slice of Report.
+//
+// Generated from table 'report'.
+func GetAllReports(db DB, wheres ...patcher.Wherer) ([]*Report, error) {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_all_" + ReportTableName))
+	defer t.ObserveDuration()
+
+	args := make([]any, 0)
+	builder := new(strings.Builder)
+	builder.WriteString("SELECT `id`, `hash`, `host`, `puppet_version`, `environment`, `state`, `executed_at`, `runtime`, `failed`, `changed`, `skipped`, `total`")
+	builder.WriteString(" FROM report t")
+
+	if len(wheres) > 0 {
+		builder.WriteString(" WHERE ")
+		for i, where := range wheres {
+			if i > 0 {
+				wtStr := patcher.WhereTypeAnd // default to AND
+				wt, ok := where.(patcher.WhereTyper)
+				if ok && wt.WhereType().IsValid() {
+					wtStr = wt.WhereType()
+				}
+				builder.WriteString(string(wtStr) + " ")
+			}
+			whereStr, whereArgs := where.Where()
+			builder.WriteString(whereStr)
+			args = append(args, whereArgs...)
+		}
+	}
+
+	sqlstr := builder.String()
+	DBLog(sqlstr, args...)
+
+	m := make([]*Report, 0)
+	if err := db.Select(&m, sqlstr, args...); err != nil {
+		return nil, fmt.Errorf("failed to get all Report: %w", err)
+	}
+
+	return m, nil
 }
 
 // Valid values for the 'State' enum column
