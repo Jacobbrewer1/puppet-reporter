@@ -37,7 +37,7 @@ func (s *service) indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	filters := s.getListReportFilters(
 		r.URL.Query().Get("host"),
-		r.URL.Query().Get("puppet_version"),
+		r.URL.Query().Get("puppet-version"),
 		r.URL.Query().Get("environment"),
 		r.URL.Query().Get("status"),
 	)
@@ -151,7 +151,7 @@ func (s *service) APIReportsTotal(w http.ResponseWriter, r *http.Request) {
 
 	filters := s.getListReportFilters(
 		r.URL.Query().Get("host"),
-		r.URL.Query().Get("puppet_version"),
+		r.URL.Query().Get("puppet-version"),
 		r.URL.Query().Get("environment"),
 		r.URL.Query().Get("status"),
 	)
