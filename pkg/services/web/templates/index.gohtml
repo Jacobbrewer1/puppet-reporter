@@ -177,6 +177,9 @@
 
         // Ensure the search form triggers fetchReports on submission
         document.addEventListener('htmx:afterRequest', function (evt) {
+            // Enable the next page button after a search request
+            document.getElementById("next-page").disabled = false;
+
             if (evt.target.id === "report-search-form") {
                 // Update the total report count after the search request
                 let searchParams = getSearchParams(); // Get search parameters from the form
