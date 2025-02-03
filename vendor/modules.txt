@@ -154,14 +154,14 @@ github.com/iancoleman/strcase
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/jacobbrewer1/goschema v0.0.15
+# github.com/jacobbrewer1/goschema v0.0.22
 ## explicit; go 1.23
 github.com/jacobbrewer1/goschema/usql
 # github.com/jacobbrewer1/pagefilter v0.1.6
 ## explicit; go 1.23
 github.com/jacobbrewer1/pagefilter
 github.com/jacobbrewer1/pagefilter/common
-# github.com/jacobbrewer1/patcher v0.1.15
+# github.com/jacobbrewer1/patcher v0.1.16
 ## explicit; go 1.23
 github.com/jacobbrewer1/patcher
 github.com/jacobbrewer1/patcher/inserter
@@ -172,7 +172,7 @@ github.com/jacobbrewer1/uhttp/common
 # github.com/jacobbrewer1/utils v0.0.1
 ## explicit; go 1.23.2
 github.com/jacobbrewer1/utils
-# github.com/jacobbrewer1/vaulty v0.1.6
+# github.com/jacobbrewer1/vaulty v0.1.7
 ## explicit; go 1.23
 github.com/jacobbrewer1/vaulty
 github.com/jacobbrewer1/vaulty/repositories
