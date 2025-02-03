@@ -428,7 +428,7 @@ func vaultSetup() error {
 
 	data := map[string]interface{}{
 		"plugin_name":              "mysql-database-plugin",
-		"allowed_roles":            "readonly",
+		"allowed_roles":            "readwrite",
 		"connection_url":           "{{username}}:{{password}}@tcp(mariadb:3306)/",
 		"username":                 "root",
 		"password":                 "Password123",

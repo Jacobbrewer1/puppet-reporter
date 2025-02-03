@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/jacobbrewer1/pagefilter"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/apis/specs/api"
@@ -89,7 +90,7 @@ func (s *service) modelAsApiReport(report *models.Report) *api.Report {
 		Id:             int64(report.Id),
 		PuppetVersion:  float32(report.PuppetVersion),
 		RuntimeSeconds: int64(report.Runtime),
-		Status:         api.ReportStatus(report.State),
+		Status:         api.ReportStatus(strings.ToLower(string(report.State))),
 		TotalChanged:   int64(report.Changed),
 		TotalFailed:    int64(report.Failed),
 		TotalResources: int64(report.Total),
@@ -122,7 +123,7 @@ func (s *service) modelAsApiResource(resource *models.Resource) *api.Resource {
 		File:   resource.File,
 		Line:   int64(resource.Line),
 		Name:   resource.Name,
-		Status: api.Status(resource.Status),
+		Status: api.Status(strings.ToLower(string(resource.Status))),
 		Type:   resource.Type,
 	}
 }
