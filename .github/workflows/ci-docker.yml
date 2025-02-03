@@ -30,14 +30,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
-    strategy:
-      matrix:
-        build_app: [ "api", "web" ]
+      contents: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          token: '${{ github.token }}'
           fetch-depth: 0
 
       - name: Set up Go
@@ -63,14 +62,18 @@ jobs:
             echo "HASH=$(git describe --tags)" >> $GITHUB_ENV
           fi
 
+      - name: Set Image Tag Environment Variable
+        run: echo "TAGS=latest,${{ env.HASH }}" >> $GITHUB_ENV
+
       - name: Lowercase Image Name
         run: echo "LOWER_IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      - name: Build app
-        run: docker build -t ${{ env.REGISTRY }}/${{ env.LOWER_IMAGE_NAME }}-${{ matrix.build_app }}:${{ env.HASH }} -t ${{ env.REGISTRY }}/${{ env.LOWER_IMAGE_NAME }}-${{ matrix.build_app }}:latest . --build-arg APP_NAME=${{ matrix.build_app }}
-
-      - name: Push app
-        if: ${{ github.event_name != 'pull_request' }}
-        run: |
-          docker push ${{ env.REGISTRY }}/${{ env.LOWER_IMAGE_NAME }}-${{ matrix.build_app }}:${{ env.HASH }}
-          docker push ${{ env.REGISTRY }}/${{ env.LOWER_IMAGE_NAME }}-${{ matrix.build_app }}:latest
+      - name: Run Mage
+        uses: magefile/mage-action@v3
+        with:
+          version: latest
+          args: images
+        env:
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}/${{ env.LOWER_IMAGE_NAME }}
+          DOCKER_PUSH: ${{ github.event_name != 'pull_request' }}
+          TAGS: ${{ env.TAGS }}
