@@ -6,6 +6,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jacobbrewer1/patcher"
 	"github.com/jacobbrewer1/patcher/inserter"
@@ -117,38 +118,6 @@ func (m *LogMessage) Update(db DB) error {
 	return nil
 }
 
-func (m *LogMessage) Patch(db DB, newT *LogMessage) error {
-	if newT == nil {
-		return errors.New("new log_message is nil")
-	}
-
-	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + LogMessageTableName))
-	defer t.ObserveDuration()
-
-	res, err := patcher.NewDiffSQLPatch(m, newT, patcher.WithTable(LogMessageTableName))
-	if err != nil {
-		return fmt.Errorf("new diff sql patch: %w", err)
-	}
-
-	sqlstr, args, err := res.GenerateSQL()
-	if err != nil {
-		switch {
-		case errors.Is(err, patcher.ErrNoChanges):
-			return nil
-		default:
-			return fmt.Errorf("failed to create patch: %w", err)
-		}
-	}
-
-	DBLog(sqlstr, args...)
-	_, err = db.Exec(sqlstr, args...)
-	if err != nil {
-		return fmt.Errorf("failed to execute patch: %w", err)
-	}
-
-	return nil
-}
-
 // InsertWithUpdate inserts the LogMessage to the database, and tries to update
 // on unique constraint violations.
 func (m *LogMessage) InsertWithUpdate(db DB) error {
@@ -227,9 +196,102 @@ func LogMessageById(db DB, id int) (*LogMessage, error) {
 	return &m, nil
 }
 
+type logMessagePKWherer struct {
+	ids []interface{}
+}
+
+func (m logMessagePKWherer) Where() (string, []interface{}) {
+	return "`id` = ?", m.ids
+}
+
+// Patch updates the LogMessage in the database.
+//
+// Generated from primary key.
+func (m *LogMessage) Patch(db DB, newT *LogMessage) error {
+	if newT == nil {
+		return errors.New("new primary is nil")
+	}
+
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("patch_" + LogMessageTableName))
+	defer t.ObserveDuration()
+
+	res, err := patcher.NewDiffSQLPatch(
+		m,
+		newT,
+		patcher.WithTable(LogMessageTableName),
+		patcher.WithWhere(&logMessagePKWherer{
+			ids: []interface{}{m.Id},
+		}),
+		patcher.WithIgnoredFields(
+			"Id",
+		),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, patcher.ErrNoChanges):
+			return nil
+		default:
+			return fmt.Errorf("new diff sql patch: %w", err)
+		}
+	}
+
+	sqlstr, args, err := res.GenerateSQL()
+	if err != nil {
+		return fmt.Errorf("failed to generate patch: %w", err)
+	}
+
+	DBLog(sqlstr, args...)
+	_, err = db.Exec(sqlstr, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute patch: %w", err)
+	}
+
+	return nil
+}
+
 // GetReportIdReport Gets an instance of Report
 //
 // Generated from constraint log_message_report_id_fk
 func (m *LogMessage) GetReportIdReport(db DB) (*Report, error) {
 	return ReportById(db, m.ReportId)
+}
+
+// GetAllLogMessages retrieves all rows from 'log_message' as a slice of LogMessage.
+//
+// Generated from table 'log_message'.
+func GetAllLogMessages(db DB, wheres ...patcher.Wherer) ([]*LogMessage, error) {
+	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_all_" + LogMessageTableName))
+	defer t.ObserveDuration()
+
+	args := make([]any, 0)
+	builder := new(strings.Builder)
+	builder.WriteString("SELECT `id`, `report_id`, `message`")
+	builder.WriteString(" FROM log_message t")
+
+	if len(wheres) > 0 {
+		builder.WriteString(" WHERE ")
+		for i, where := range wheres {
+			if i > 0 {
+				wtStr := patcher.WhereTypeAnd // default to AND
+				wt, ok := where.(patcher.WhereTyper)
+				if ok && wt.WhereType().IsValid() {
+					wtStr = wt.WhereType()
+				}
+				builder.WriteString(string(wtStr) + " ")
+			}
+			whereStr, whereArgs := where.Where()
+			builder.WriteString(whereStr)
+			args = append(args, whereArgs...)
+		}
+	}
+
+	sqlstr := builder.String()
+	DBLog(sqlstr, args...)
+
+	m := make([]*LogMessage, 0)
+	if err := db.Select(&m, sqlstr, args...); err != nil {
+		return nil, fmt.Errorf("failed to get all LogMessage: %w", err)
+	}
+
+	return m, nil
 }

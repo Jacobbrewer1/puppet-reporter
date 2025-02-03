@@ -12,7 +12,7 @@ import (
 
 	"github.com/google/subcommands"
 	"github.com/gorilla/mux"
-	"github.com/jacobbrewer1/puppet-reporter/pkg/codegen/apis/api"
+	"github.com/jacobbrewer1/puppet-reporter/pkg/apis/specs/api"
 	"github.com/jacobbrewer1/puppet-reporter/pkg/logging"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/api"
 	svc "github.com/jacobbrewer1/puppet-reporter/pkg/services/api"
