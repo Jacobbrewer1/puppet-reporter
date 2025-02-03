@@ -7,12 +7,12 @@ require (
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/google/subcommands v1.2.0
 	github.com/gorilla/mux v1.8.1
-	github.com/jacobbrewer1/goschema v0.0.15
+	github.com/jacobbrewer1/goschema v0.0.22
 	github.com/jacobbrewer1/pagefilter v0.1.6
-	github.com/jacobbrewer1/patcher v0.1.15
+	github.com/jacobbrewer1/patcher v0.1.16
 	github.com/jacobbrewer1/uhttp v0.0.9
 	github.com/jacobbrewer1/utils v0.0.1
-	github.com/jacobbrewer1/vaulty v0.1.6
+	github.com/jacobbrewer1/vaulty v0.1.7
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/magefile/mage v1.15.0
 	github.com/oapi-codegen/runtime v1.1.1
