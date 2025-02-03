@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	stylePrefix = "list-group-item"
+	stylePrefix = "table"
 	styleJoiner = "-"
 
 	failureStyle   = "danger"

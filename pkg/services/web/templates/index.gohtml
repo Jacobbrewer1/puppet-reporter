@@ -1,50 +1,195 @@
-{{ define "index" }}
+{{define "index"}}
     <!DOCTYPE html>
     <html lang="en">
+
     <head>
         <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Reports</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet"
-              integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ"
-              crossorigin="anonymous">
-        <script src="https://unpkg.com/htmx.org@1.9.2"
-                integrity="sha384-L6OqL9pRWyyFU3+/bjdSri+iIphTN/bvYyM37tICVyOJkWZLpP2vGn6VUEXgzg6h"
-                crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+        <script src="https://unpkg.com/htmx.org"></script>
     </head>
-    <body class="container">
-    <h1>Home</h1>
 
-    <div class="row mt-4 g-4">
-        <div class="col-md-8 mx-auto">
-            {{/* Align this form div to the right with padding between the form and the list */}}
-            <div class="col-md-4 ms-auto mb-4">
-                <form hx-post="/reports" hx-target="#report-list" hx-swap="innerHTML" hx-indicator="#spinner">
-                    <div class="mb-2">
-                        <label for="num-days">Days</label>
-                        <input type="number" name="num-days" id="num-days" class="form-control" value="{{ .ReportsDefaultSearchRange }}"/>
+    <body>
+    <div class="container my-5">
+        <!-- Webpage Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Host Reports</h1>
+        </div>
+
+        <!-- Search Form -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <form id="report-search-form" class="d-flex justify-content-between" hx-get="/api/reports?limit=15"
+                      hx-target="#report-list" hx-trigger="submit">
+                    <div class="form-group">
+                        <label for="host">Host</label>
+                        <input type="text" class="form-control" id="host" name="host">
                     </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <span class="spinner-border spinner-border-sm htmx-indicator" id="spinner" role="status"
-                              aria-hidden="true"></span>
-                        Refresh
-                    </button>
+                    <div class="form-group">
+                        <label for="puppet-version">Puppet Version</label>
+                        <input type="text" class="form-control" id="puppet-version" name="puppet-version">
+                    </div>
+                    <div class="form-group">
+                        <label for="environment">Environment</label>
+                        <input type="text" class="form-control" id="environment" name="environment">
+                    </div>
+                    <div class="form-group">
+                        <label for="state">State</label>
+                        <input type="text" class="form-control" id="state" name="state">
+                    </div>
+                    <div class="form-group align-self-end">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </div>
                 </form>
             </div>
+        </div>
 
-            <h1 class="mb-4">Report List</h1>
-            <ul class="list-group fs-5 me-5" id="report-list">
-                {{ block "report-list-element" .}}
-                    {{ range .Reports }}
-                        <li class="list-group-item {{ getReportStyle . }} text-center">{{ .Host }}
-                            - {{ .ExecutedAt}}</li>
-                    {{ end }}
+        <!-- Reports Panel -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Report List</h5>
+                {{ block "total_reports" . }}
+                    <div id="report-total-container">
+                        <span class="fw-bold">Total Hosts: <span id="report-total">{{ .Reports.Total }}</span></span>
+                    </div>
                 {{ end }}
-            </ul>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped" id="reports-table">
+                    <thead>
+                    <tr>
+                        <th>Host</th>
+                        <th>Puppet Version</th>
+                        <th>Environment</th>
+                        <th>State</th>
+                        <th>Executed At</th>
+                        <th>Apply Duration</th>
+                        <th>Report</th>
+                    </tr>
+                    </thead>
+                    <tbody id="report-list">
+                    {{ block "report_list" . }}
+                        {{ range .Reports.Items }}
+                            <tr class="{{ getReportStyle . }}" data-report-id="{{ .Id }}">
+                                <td>{{ .Host }}</td>
+                                <td>{{ .PuppetVersion }}</td>
+                                <td>{{ .Environment }}</td>
+                                <td>{{ .State }}</td>
+                                <td>{{ .ExecutedAt }}</td>
+                                <td>{{ .Runtime }}s</td>
+                                <td>
+                                    <a href="/reports/{{ .Id }}" class="btn btn-primary btn-sm">View</a>
+                                </td>
+                            </tr>
+                        {{ end }}
+                    {{ end }}
+                    </tbody>
+                </table>
+
+                <!-- Pagination Controls -->
+                <div class="d-flex justify-content-end mt-3 gap-2">
+                    <button id="prev-page" class="btn btn-secondary" disabled>Previous</button>
+                    <button id="next-page" class="btn btn-primary">Next</button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let paginationState = {
+            pageIndex: 0,
+            lastIds: [null], // Ensure first page starts correctly
+        };
+
+        let itemsPerPage = 15;  // Define how many items to load per page
+
+        function getSearchParams() {
+            // Collect search form data
+            let form = document.getElementById("report-search-form");
+            let formData = new FormData(form);
+            let searchParams = new URLSearchParams();
+
+            formData.forEach((value, key) => {
+                if (value) { // Only append non-empty fields
+                    searchParams.append(key, value);
+                }
+            });
+
+            return searchParams;
+        }
+
+        function fetchReports(pageChange) {
+            let newPageIndex = paginationState.pageIndex + pageChange;
+            if (newPageIndex < 0) return; // Prevent negative index
+
+            let lastId = paginationState.lastIds[newPageIndex - 1] || ""; // Get last ID for the new page
+
+            // Get existing search parameters from the form
+            let queryParams = getSearchParams();
+            queryParams.append("limit", itemsPerPage);
+
+            if (lastId) {
+                queryParams.append("last_id", lastId);
+            }
+
+            let url = "/api/reports?" + queryParams.toString();
+
+            // **Before request: Capture last ID for previous page**
+            if (pageChange > 0) {
+                let lastRow = document.querySelector("#report-list tr:last-child");
+                if (lastRow) {
+                    paginationState.lastIds[paginationState.pageIndex] = lastRow.dataset.reportId;
+                }
+
+                // Append the id to the URL
+                url += "&last_id=" + lastRow.dataset.reportId;
+            }
+
+            htmx.ajax("GET", url, {
+                target: "#report-list",
+                swap: "innerHTML",
+                headers: {"HX-Request": "true"},
+            }).then(response => {
+                paginationState.pageIndex = newPageIndex;
+
+                let rows = document.querySelectorAll("#report-list tr");
+                let lastRowAfter = rows[rows.length - 1];
+
+                // Store last ID for the new page
+                if (lastRowAfter) {
+                    paginationState.lastIds[newPageIndex] = lastRowAfter.dataset.reportId;
+                }
+
+                let totalItems = parseInt(document.getElementById("report-total").textContent, 10);
+                let totalPages = Math.ceil(totalItems / itemsPerPage);
+
+                // **Enable/disable the buttons based on the page index and total pages**
+                document.getElementById("next-page").disabled = paginationState.pageIndex >= totalPages - 1;
+                document.getElementById("prev-page").disabled = paginationState.pageIndex === 0;
+            });
+        }
+
+        document.getElementById("next-page").addEventListener("click", () => fetchReports(1));
+        document.getElementById("prev-page").addEventListener("click", () => fetchReports(-1));
+
+        // Ensure the search form triggers fetchReports on submission
+        document.addEventListener('htmx:afterRequest', function (evt) {
+            if (evt.target.id === "report-search-form") {
+                // Update the total report count after the search request
+                let searchParams = getSearchParams(); // Get search parameters from the form
+                let totalCountUrl = "/api/reports/total?" + new URLSearchParams(searchParams).toString();
+
+                htmx.ajax("GET", totalCountUrl, {
+                    target: "#report-total-container", // Update only the total report count element
+                    swap: "innerHTML" // Replace the inner HTML of the target
+                });
+            }
+        });
+    </script>
     </body>
+
     </html>
-{{ end }}
+{{end}}

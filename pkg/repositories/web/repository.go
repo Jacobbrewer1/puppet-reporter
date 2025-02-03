@@ -1,8 +1,6 @@
 package api
 
 import (
-	"time"
-
 	"github.com/jacobbrewer1/vaulty/repositories"
 )
 
@@ -16,12 +14,4 @@ func NewRepository(db *repositories.Database) Repository {
 	return &repository{
 		db: db,
 	}
-}
-
-type GetReportsFilters struct {
-	Host        *string
-	Environment *string
-	State       *string
-	From        *time.Time
-	To          *time.Time
 }

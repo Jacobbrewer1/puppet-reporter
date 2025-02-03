@@ -322,7 +322,7 @@ func GetAllReports(db DB, wheres ...patcher.Wherer) ([]*Report, error) {
 
 // Valid values for the 'State' enum column
 var (
-	ReportStateChanged   = usql.NewEnum("CHANGED")
-	ReportStateFailed    = usql.NewEnum("FAILED")
-	ReportStateUnchanged = usql.NewEnum("UNCHANGED")
+	ReportStateChanged   = usql.NewEnum("changed")
+	ReportStateFailed    = usql.NewEnum("failed")
+	ReportStateUnchanged = usql.NewEnum("unchanged")
 )

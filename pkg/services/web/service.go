@@ -6,17 +6,17 @@ import (
 
 	"github.com/gorilla/mux"
 	repo "github.com/jacobbrewer1/puppet-reporter/pkg/repositories/web"
+	"github.com/jacobbrewer1/uhttp"
 )
 
-//go:embed templates/*.gohtml
-var templates embed.FS
+//go:embed templates/*
+var localTemplates embed.FS
 
 type Service interface {
-	Register(r *mux.Router, middlewares ...http.HandlerFunc)
+	Register(r *mux.Router, middleware ...http.HandlerFunc)
 }
 
 type service struct {
-	// r is the repository used by the service.
 	r repo.Repository
 }
 
@@ -26,16 +26,25 @@ func NewService(r repo.Repository) Service {
 	}
 }
 
-func (s *service) Register(r *mux.Router, middlewares ...http.HandlerFunc) {
-	r.HandleFunc("/", wrapHandler(s.indexHandler, middlewares...)).Methods(http.MethodGet)
-	r.HandleFunc("/reports", wrapHandler(s.getReportListHandler, middlewares...)).Methods(http.MethodPost)
+func (s *service) Register(r *mux.Router, middleware ...http.HandlerFunc) {
+	apiRouter := r.PathPrefix("/api").Subrouter()
+
+	r.HandleFunc("/", wrapHandler(s.indexHandler, middleware...)).Methods(http.MethodGet)
+
+	apiRouter.HandleFunc("/reports", wrapHandler(s.APIListReports, middleware...)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/reports/total", wrapHandler(s.APIReportsTotal, middleware...)).Methods(http.MethodGet)
 }
 
-func wrapHandler(h http.HandlerFunc, middlewares ...http.HandlerFunc) http.HandlerFunc {
+func wrapHandler(next http.HandlerFunc, middleware ...http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		for _, m := range middlewares {
-			m(w, r)
+		cw := uhttp.NewResponseWriter(w,
+			uhttp.WithDefaultContentType("text/html"),
+			uhttp.WithDefaultStatusCode(http.StatusOK),
+		)
+
+		for _, m := range middleware {
+			m(cw, r)
 		}
-		h(w, r)
+		next(cw, r)
 	}
 }
