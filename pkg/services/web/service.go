@@ -52,7 +52,3 @@ func wrapHandler(next http.HandlerFunc, middleware ...http.HandlerFunc) http.Han
 		next(cw, r)
 	}
 }
-
-func isHtmxRequest(r *http.Request) bool {
-	return r.Header.Get(htmxHeaderName) == "true"
-}
