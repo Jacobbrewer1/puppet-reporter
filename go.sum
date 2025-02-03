@@ -113,8 +113,8 @@ github.com/jacobbrewer1/goschema v0.0.22 h1:KVMYbGDwGKAGSheafQx0lUYBiunSnnv24417
 github.com/jacobbrewer1/goschema v0.0.22/go.mod h1:rn0d9mf1MEj/lNtmETfZIv2vIYFs5XWWH44as0lYI2M=
 github.com/jacobbrewer1/pagefilter v0.1.6 h1:X7qfmPd4xgaTwoV5BPCHgmKeNz6PTRyjgNA7TVxMnKg=
 github.com/jacobbrewer1/pagefilter v0.1.6/go.mod h1:leTL8G1StBjLTAiFSLptHTQsHZ5JfvAUCoOWwmz9dPI=
-github.com/jacobbrewer1/patcher v0.1.16 h1:AO3Um5QVMQibV6akHVA+OjLNB7uQGyHz4NGp51BX/fs=
-github.com/jacobbrewer1/patcher v0.1.16/go.mod h1:zEgOixvOt2wO2WmoUreN5L5qJpCOdP2eWiYd0XZULn8=
+github.com/jacobbrewer1/patcher v0.1.17 h1:qxnRb5hIQWixcu6wE8Du9s9XHsJrX2GhwP3tG+mC1XE=
+github.com/jacobbrewer1/patcher v0.1.17/go.mod h1:rurnK9D/WNAbHGO86m9naLmY5EXxrerZl6NeReFouZo=
 github.com/jacobbrewer1/uhttp v0.0.9 h1:M76VZsv+hRG2QQn0xf3Z+cTz27CfKi+qZO2JkgjYLsE=
 github.com/jacobbrewer1/uhttp v0.0.9/go.mod h1:F2AcawxAm50qWW2jidcNDhqVWU81jPD4HfK/IiFB2u8=
 github.com/jacobbrewer1/utils v0.0.1 h1:kx57NtBgO/c7rCw2QqYY34lCgoS9/VwUjjNvUtgCsS4=
