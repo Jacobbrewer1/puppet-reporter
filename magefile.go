@@ -343,7 +343,8 @@ func installOpenAPILint() error {
 	return nil
 }
 
-func InitLocal() error {
+// Set up the local environment and provision the necessary resources
+func LocalSetup() error {
 	fmt.Println("Initializing local environment...")
 
 	cmd := exec.Command("docker", "compose", "up", "-d")
