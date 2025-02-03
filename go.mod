@@ -7,9 +7,10 @@ require (
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/google/subcommands v1.2.0
 	github.com/gorilla/mux v1.8.1
+	github.com/hashicorp/vault/api v1.15.0
 	github.com/jacobbrewer1/goschema v0.0.22
 	github.com/jacobbrewer1/pagefilter v0.1.6
-	github.com/jacobbrewer1/patcher v0.1.16
+	github.com/jacobbrewer1/patcher v0.1.17
 	github.com/jacobbrewer1/uhttp v0.0.9
 	github.com/jacobbrewer1/utils v0.0.1
 	github.com/jacobbrewer1/vaulty v0.1.7
@@ -53,7 +54,6 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/vault/api v1.15.0 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.8.0 // indirect
 	github.com/hashicorp/vault/api/auth/kubernetes v0.8.0 // indirect
 	github.com/hashicorp/vault/api/auth/userpass v0.8.0 // indirect
