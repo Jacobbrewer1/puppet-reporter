@@ -11,8 +11,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/client"
+	"github.com/hashicorp/vault/api"
 	"github.com/jacobbrewer1/utils"
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 )
@@ -165,9 +167,13 @@ func InstallDeps() error {
 }
 
 // Clean up after yourself
-func Clean() {
+func Clean() error {
 	fmt.Println("Cleaning...")
-	os.RemoveAll("MyApp")
+	os.RemoveAll("bin")
+	cmd := exec.Command("docker", "compose", "down")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 type apiLintResponse struct {
@@ -335,4 +341,139 @@ func installOpenAPILint() error {
 	}
 
 	return nil
+}
+
+// Set up the local environment and provision the necessary resources
+func LocalSetup() error {
+	fmt.Println("Initializing local environment...")
+
+	cmd := exec.Command("docker", "compose", "up", "-d")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to start local environment: %w", err)
+	}
+
+	fmt.Println("Waiting for MariaDB to be ready...")
+	time.Sleep(10 * time.Second) // Give MariaDB time to start
+
+	fmt.Println("Setting up Vault...")
+	if err := vaultSetup(); err != nil {
+		//mg.Deps(Clean)
+		return fmt.Errorf("failed to setup vault: %w", err)
+	}
+	fmt.Println("Vault setup successfully!")
+
+	fmt.Println("Setting up local Database...")
+	if err := setupLocalDatabase(); err != nil {
+		//mg.Deps(Clean)
+		return fmt.Errorf("failed to setup local database: %w", err)
+	}
+	fmt.Println("Local Database setup successfully!")
+
+	fmt.Println("Local environment initialized successfully!")
+	return nil
+}
+
+func setupLocalDatabase() error {
+	// Current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	defer func() {
+		if err := os.Chdir(cwd); err != nil {
+			fmt.Println("failed to change directory: %w", err)
+		}
+	}()
+
+	os.Setenv("DATABASE_URL", "root:Password123@tcp(localhost:3306)/puppetreporter")
+
+	// Set the working directory to the database/migrations directory
+	if err := os.Chdir("./database/migrations"); err != nil {
+		return fmt.Errorf("failed to change directory: %w", err)
+	}
+
+	// Run the database migrations
+	cmd := exec.Command("goschema", "migrate", "-up")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func vaultSetup() error {
+	client, err := getLocalVaultClient()
+	if err != nil {
+		return fmt.Errorf("error getting vault client: %w", err)
+	}
+
+	const dbMountPath = "b3-prod-1-db"
+
+	// Enable the Database secrets engine
+	if err := client.Sys().Mount(dbMountPath, &api.MountInput{
+		Type:        "database",
+		Description: "Database secrets engine",
+		Config: api.MountConfigInput{
+			Options: map[string]string{
+				"plugin_name": "mysql-database-plugin",
+			},
+		},
+	}); err != nil {
+		return fmt.Errorf("error enabling database secrets engine: %w", err)
+	}
+
+	// Create a new connection
+	path := dbMountPath + "/config/prod-mysql"
+
+	data := map[string]interface{}{
+		"plugin_name":              "mysql-database-plugin",
+		"allowed_roles":            "readonly",
+		"connection_url":           "{{username}}:{{password}}@tcp(mariadb:3306)/",
+		"username":                 "root",
+		"password":                 "Password123",
+		"root_rotation_statements": []string{},
+	}
+
+	if _, err := client.Logical().Write(path, data); err != nil {
+		return fmt.Errorf("error configuring MySQL connection: %w", err)
+	}
+
+	fmt.Println("MySQL database connection configured successfully!")
+
+	const roleName = "readwrite"
+	rolePath := dbMountPath + "/roles/" + roleName
+
+	roleData := map[string]interface{}{
+		"db_name":   "prod-mysql",
+		"role_name": roleName,
+		"creation_statements": []string{
+			"CREATE USER '{{name}}'@'%' IDENTIFIED BY '{{password}}';",
+			"GRANT ALL PRIVILEGES ON *.* TO '{{name}}'@'%';",
+		},
+		"default_ttl": "1h",
+		"max_ttl":     "24h",
+	}
+
+	if _, err := client.Logical().Write(rolePath, roleData); err != nil {
+		return fmt.Errorf("error creating MySQL role: %w", err)
+	}
+
+	fmt.Println("MySQL role 'readonly' created successfully at:", rolePath)
+
+	return nil
+}
+
+func getLocalVaultClient() (*api.Client, error) {
+	config := api.DefaultConfig()
+	config.Address = "http://localhost:8200"
+
+	client, err := api.NewClient(config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating vault client: %w", err)
+	}
+
+	client.SetToken("root")
+
+	return client, nil
 }
