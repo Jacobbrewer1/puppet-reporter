@@ -5,3 +5,29 @@ services:
       - "8200:8200"
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: "root"
+    networks:
+      - puppetreporter
+    depends_on:
+      - mariadb
+
+  mariadb:
+    container_name: mariadb
+    image: mariadb:10.5.8
+    ports:
+      - "3306:3306"
+    command:
+      - "--bind-address=0.0.0.0"
+    environment:
+      MYSQL_ROOT_PASSWORD: "Password123"
+      MYSQL_DATABASE: "puppetreporter"
+    networks:
+      - puppetreporter
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  puppetreporter:
+    driver: bridge

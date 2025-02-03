@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/hashicorp/vault/api"
@@ -343,6 +344,8 @@ func installOpenAPILint() error {
 }
 
 func InitLocal() error {
+	fmt.Println("Initializing local environment...")
+
 	cmd := exec.Command("docker", "compose", "up", "-d")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -350,13 +353,52 @@ func InitLocal() error {
 		return fmt.Errorf("failed to start local environment: %w", err)
 	}
 
-	fmt.Println("Initializing local environment...")
+	fmt.Println("Waiting for MariaDB to be ready...")
+	time.Sleep(10 * time.Second) // Give MariaDB time to start
+
+	fmt.Println("Setting up Vault...")
 	if err := vaultSetup(); err != nil {
-		mg.Deps(Clean)
+		//mg.Deps(Clean)
 		return fmt.Errorf("failed to setup vault: %w", err)
 	}
+	fmt.Println("Vault setup successfully!")
 
+	fmt.Println("Setting up local Database...")
+	if err := setupLocalDatabase(); err != nil {
+		//mg.Deps(Clean)
+		return fmt.Errorf("failed to setup local database: %w", err)
+	}
+	fmt.Println("Local Database setup successfully!")
+
+	fmt.Println("Local environment initialized successfully!")
 	return nil
+}
+
+func setupLocalDatabase() error {
+	// Current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	defer func() {
+		if err := os.Chdir(cwd); err != nil {
+			fmt.Println("failed to change directory: %w", err)
+		}
+	}()
+
+	os.Setenv("DATABASE_URL", "root:Password123@tcp(localhost:3306)/puppetreporter")
+
+	// Set the working directory to the database/migrations directory
+	if err := os.Chdir("./database/migrations"); err != nil {
+		return fmt.Errorf("failed to change directory: %w", err)
+	}
+
+	// Run the database migrations
+	cmd := exec.Command("goschema", "migrate", "-up")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func vaultSetup() error {
@@ -373,8 +415,7 @@ func vaultSetup() error {
 		Description: "Database secrets engine",
 		Config: api.MountConfigInput{
 			Options: map[string]string{
-				"plugin_name":    "mysql-database-plugin",
-				"connection_url": "root:password@tcp(data.bthree.uk:3306)/",
+				"plugin_name": "mysql-database-plugin",
 			},
 		},
 	}); err != nil {
@@ -387,7 +428,7 @@ func vaultSetup() error {
 	data := map[string]interface{}{
 		"plugin_name":              "mysql-database-plugin",
 		"allowed_roles":            "readonly",
-		"connection_url":           "{{username}}:{{password}}@tcp(localhost:3306)/",
+		"connection_url":           "{{username}}:{{password}}@tcp(mariadb:3306)/",
 		"username":                 "root",
 		"password":                 "Password123",
 		"root_rotation_statements": []string{},
