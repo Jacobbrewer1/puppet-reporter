@@ -21,7 +21,6 @@ func GetVaultClient(ctx context.Context, v *viper.Viper) (vaulty.Client, error) 
 	vc, err := vaulty.NewClient(
 		vaulty.WithContext(ctx),
 		vaulty.WithAddr(addr),
-		vaulty.WithGeneratedVaultClient(addr),
 		vaulty.WithUserPassAuth(v.GetString("vault.username"), v.GetString("vault.password")),
 		vaulty.WithKvv2Mount(v.GetString("vault.kvv2_mount")),
 	)
