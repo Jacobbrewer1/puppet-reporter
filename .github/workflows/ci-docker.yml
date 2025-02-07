@@ -72,7 +72,7 @@ jobs:
         uses: magefile/mage-action@v3
         with:
           version: latest
-          args: images
+          args: images:BuildAll
         env:
           DOCKER_REGISTRY: ${{ env.REGISTRY }}/${{ env.LOWER_IMAGE_NAME }}
           DOCKER_PUSH: ${{ github.event_name != 'pull_request' }}
