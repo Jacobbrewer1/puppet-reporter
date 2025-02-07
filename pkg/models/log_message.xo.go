@@ -259,29 +259,42 @@ func (m *LogMessage) GetReportIdReport(db DB) (*Report, error) {
 // GetAllLogMessages retrieves all rows from 'log_message' as a slice of LogMessage.
 //
 // Generated from table 'log_message'.
-func GetAllLogMessages(db DB, wheres ...patcher.Wherer) ([]*LogMessage, error) {
+func GetAllLogMessages(db DB, filters ...any) ([]*LogMessage, error) {
 	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_all_" + LogMessageTableName))
 	defer t.ObserveDuration()
 
 	args := make([]any, 0)
 	builder := new(strings.Builder)
-	builder.WriteString("SELECT `id`, `report_id`, `message`")
-	builder.WriteString(" FROM log_message t")
+	builder.WriteString("SELECT `t.id`, `t.report_id`, `t.message`")
 
-	if len(wheres) > 0 {
-		builder.WriteString(" WHERE ")
-		for i, where := range wheres {
-			if i > 0 {
-				wtStr := patcher.WhereTypeAnd // default to AND
-				wt, ok := where.(patcher.WhereTyper)
-				if ok && wt.WhereType().IsValid() {
-					wtStr = wt.WhereType()
-				}
-				builder.WriteString(string(wtStr) + " ")
+	if len(filters) > 0 {
+		for _, filter := range filters {
+			if joiner := filter.(patcher.Joiner); joiner != nil {
+				joinSql, joinArgs := joiner.Join()
+				builder.WriteString(joinSql)
+				args = append(args, joinArgs...)
 			}
-			whereStr, whereArgs := where.Where()
-			builder.WriteString(whereStr)
-			args = append(args, whereArgs...)
+		}
+	}
+
+	builder.WriteString("\nFROM log_message t")
+
+	if len(filters) > 0 {
+		builder.WriteString("\nWHERE\n")
+		for i, filter := range filters {
+			if where := filter.(patcher.Wherer); where != nil {
+				if i > 0 {
+					wtStr := patcher.WhereTypeAnd
+					if wt, ok := filter.(patcher.WhereTyper); ok {
+						wtStr = wt.WhereType()
+					}
+					builder.WriteString(string(" " + wtStr + " "))
+				}
+				whereSql, whereArgs := where.Where()
+				builder.WriteString(whereSql)
+				builder.WriteString("\n")
+				args = append(args, whereArgs...)
+			}
 		}
 	}
 

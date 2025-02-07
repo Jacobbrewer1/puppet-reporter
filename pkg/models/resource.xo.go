@@ -264,29 +264,42 @@ func (m *Resource) GetReportIdReport(db DB) (*Report, error) {
 // GetAllResources retrieves all rows from 'resource' as a slice of Resource.
 //
 // Generated from table 'resource'.
-func GetAllResources(db DB, wheres ...patcher.Wherer) ([]*Resource, error) {
+func GetAllResources(db DB, filters ...any) ([]*Resource, error) {
 	t := prometheus.NewTimer(DatabaseLatency.WithLabelValues("get_all_" + ResourceTableName))
 	defer t.ObserveDuration()
 
 	args := make([]any, 0)
 	builder := new(strings.Builder)
-	builder.WriteString("SELECT `id`, `report_id`, `status`, `name`, `type`, `file`, `line`")
-	builder.WriteString(" FROM resource t")
+	builder.WriteString("SELECT `t.id`, `t.report_id`, `t.status`, `t.name`, `t.type`, `t.file`, `t.line`")
 
-	if len(wheres) > 0 {
-		builder.WriteString(" WHERE ")
-		for i, where := range wheres {
-			if i > 0 {
-				wtStr := patcher.WhereTypeAnd // default to AND
-				wt, ok := where.(patcher.WhereTyper)
-				if ok && wt.WhereType().IsValid() {
-					wtStr = wt.WhereType()
-				}
-				builder.WriteString(string(wtStr) + " ")
+	if len(filters) > 0 {
+		for _, filter := range filters {
+			if joiner := filter.(patcher.Joiner); joiner != nil {
+				joinSql, joinArgs := joiner.Join()
+				builder.WriteString(joinSql)
+				args = append(args, joinArgs...)
 			}
-			whereStr, whereArgs := where.Where()
-			builder.WriteString(whereStr)
-			args = append(args, whereArgs...)
+		}
+	}
+
+	builder.WriteString("\nFROM resource t")
+
+	if len(filters) > 0 {
+		builder.WriteString("\nWHERE\n")
+		for i, filter := range filters {
+			if where := filter.(patcher.Wherer); where != nil {
+				if i > 0 {
+					wtStr := patcher.WhereTypeAnd
+					if wt, ok := filter.(patcher.WhereTyper); ok {
+						wtStr = wt.WhereType()
+					}
+					builder.WriteString(string(" " + wtStr + " "))
+				}
+				whereSql, whereArgs := where.Where()
+				builder.WriteString(whereSql)
+				builder.WriteString("\n")
+				args = append(args, whereArgs...)
+			}
 		}
 	}
 
