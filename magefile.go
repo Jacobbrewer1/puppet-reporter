@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,8 +15,10 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/vault/api"
 	"github.com/jacobbrewer1/utils"
+	"github.com/jmoiron/sqlx"
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 )
 
@@ -345,6 +348,7 @@ func installOpenAPILint() error {
 
 // Set up the local environment and provision the necessary resources
 func LocalSetup() error {
+	mg.Deps(Clean)
 	fmt.Println("Initializing local environment...")
 
 	cmd := exec.Command("docker", "compose", "up", "-d")
@@ -354,8 +358,44 @@ func LocalSetup() error {
 		return fmt.Errorf("failed to start local environment: %w", err)
 	}
 
-	fmt.Println("Waiting for MariaDB to be ready...")
-	time.Sleep(10 * time.Second) // Give MariaDB time to start
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	connected := false
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for local environment to start")
+		default:
+			fmt.Println("Checking if database is ready...")
+			db, err := sqlx.Open("mysql", "root:Password123@tcp(localhost:3306)/puppetreporter")
+			if err != nil {
+				fmt.Println("Failed to open database connection:", err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			fmt.Println("Waiting for database to start...")
+			if err := db.Ping(); err != nil {
+				fmt.Println("Failed to ping database:", err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			fmt.Println("Database is ready! Closing connection...")
+			if err := db.Close(); err != nil {
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			fmt.Println("Database connection closed!")
+			connected = true
+		}
+
+		if connected {
+			break
+		}
+	}
 
 	fmt.Println("Setting up Vault...")
 	if err := vaultSetup(); err != nil {
