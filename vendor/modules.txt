@@ -176,7 +176,7 @@ github.com/jacobbrewer1/goschema/usql
 ## explicit; go 1.23
 github.com/jacobbrewer1/pagefilter
 github.com/jacobbrewer1/pagefilter/common
-# github.com/jacobbrewer1/patcher v0.1.17
+# github.com/jacobbrewer1/patcher v0.1.18
 ## explicit; go 1.23
 github.com/jacobbrewer1/patcher
 github.com/jacobbrewer1/patcher/inserter
