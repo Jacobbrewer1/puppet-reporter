@@ -43,7 +43,14 @@ func (c *ResponseWriter) Write(p []byte) (bytes int, err error) {
 	c.writeDefaultHeaders()
 	c.WriteHeader(c.defaultStatusCode)
 	bytes, err = c.ResponseWriter.Write(p)
-	c.bytesWritten += uint64(bytes)
+	if err != nil {
+		return
+	}
+	writtenBytes := uint64(0)
+	if bytes > 0 {
+		writtenBytes = uint64(bytes)
+	}
+	c.bytesWritten += writtenBytes
 	return
 }
 
