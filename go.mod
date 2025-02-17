@@ -8,7 +8,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/subcommands v1.2.0
 	github.com/gorilla/mux v1.8.1
-	github.com/hashicorp/vault/api v1.15.0
+	github.com/hashicorp/vault/api v1.16.0
 	github.com/jacobbrewer1/goschema v0.0.22
 	github.com/jacobbrewer1/pagefilter v0.1.6
 	github.com/jacobbrewer1/patcher v0.1.17
