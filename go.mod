@@ -9,7 +9,7 @@ require (
 	github.com/google/subcommands v1.2.0
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/vault/api v1.16.0
-	github.com/jacobbrewer1/goschema v0.0.22
+	github.com/jacobbrewer1/goschema v0.0.24
 	github.com/jacobbrewer1/pagefilter v0.1.6
 	github.com/jacobbrewer1/patcher v0.1.19
 	github.com/jacobbrewer1/uhttp v0.0.9
@@ -93,6 +93,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
+	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/speakeasy-api/openapi-overlay v0.9.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
