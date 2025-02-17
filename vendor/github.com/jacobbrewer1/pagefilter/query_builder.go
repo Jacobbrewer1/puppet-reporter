@@ -149,16 +149,17 @@ func (p *Paginator) First() (string, error) {
 	sqlBuilder.WriteString(" ASC \n")
 	sqlBuilder.WriteString("LIMIT 1")
 
-	args := append(jArgs, wArgs...)
+	sqlArgs := jArgs
+	sqlArgs = append(sqlArgs, wArgs...)
 	var err error
 	sql := sqlBuilder.String()
-	sql, args, err = sqlx.In(sql, args...)
+	sql, sqlArgs, err = sqlx.In(sql, sqlArgs...)
 	if err != nil {
 		return "", fmt.Errorf("first sql in: %w", err)
 	}
 
 	var pivot string
-	err = p.db.Get(&pivot, sql, args...)
+	err = p.db.Get(&pivot, sql, sqlArgs...)
 	if err != nil {
 		return "", fmt.Errorf("first select: %w", err)
 	}
@@ -213,7 +214,8 @@ func (p *Paginator) pivotFromValue() (string, error) {
 	sqlBuilder.WriteString(" ASC \n")
 	sqlBuilder.WriteString("LIMIT 1")
 
-	args := append(jArgs, p.details.LastVal)
+	args := jArgs
+	args = append(args, p.details.LastVal)
 	args = append(args, wArgs...)
 
 	sql := sqlBuilder.String()
@@ -279,18 +281,19 @@ func (p *Paginator) pivotFromID() (string, error) {
 	sqlBuilder.WriteString(" ASC \n")
 	sqlBuilder.WriteString("LIMIT 1")
 
-	args := append(jArgs, p.details.LastID)
-	args = append(args, wArgs...)
+	sqlArgs := jArgs
+	sqlArgs = append(sqlArgs, p.details.LastID)
+	sqlArgs = append(sqlArgs, wArgs...)
 
 	sql := sqlBuilder.String()
 	var err error
-	sql, args, err = sqlx.In(sql, args...)
+	sql, sqlArgs, err = sqlx.In(sql, sqlArgs...)
 	if err != nil {
 		return "", fmt.Errorf("pivot from id sql in: %w", err)
 	}
 
 	var pivot string
-	err = p.db.Get(&pivot, sql, args...)
+	err = p.db.Get(&pivot, sql, sqlArgs...)
 	if err != nil {
 		return "", fmt.Errorf("pivot from id select: %w", err)
 	}
@@ -301,11 +304,12 @@ func (p *Paginator) pivotFromID() (string, error) {
 // Pivot finds the pivot point in the data.
 func (p *Paginator) Pivot() (string, error) {
 	// We were given no information about where to pivot from, pivot from the first value
-	if p.details.LastID == "" && p.details.LastVal == "" {
+	switch {
+	case p.details.LastID == "" && p.details.LastVal == "":
 		return p.First()
-	} else if p.details.LastID == "" && p.details.LastVal != "" {
+	case p.details.LastID == "" && p.details.LastVal != "":
 		return p.pivotFromValue()
-	} else if p.details.LastID != "" && p.details.LastVal == "" {
+	case p.details.LastID != "" && p.details.LastVal == "":
 		return p.pivotFromID()
 	}
 
@@ -350,7 +354,8 @@ func (p *Paginator) Pivot() (string, error) {
 
 	sqlBuilder.WriteString("LIMIT 1")
 
-	args := append(jArgs, p.details.LastVal, p.details.LastID)
+	args := jArgs
+	args = append(args, p.details.LastVal, p.details.LastID)
 	args = append(args, wArgs...)
 
 	sql := sqlBuilder.String()
@@ -492,7 +497,8 @@ func (p *Paginator) Retrieve(pivot string, dest any) error {
 	sqlBuilder.WriteString(p.idKey)
 	sqlBuilder.WriteString(" ASC \n")
 
-	args := append(jArgs, pivot, pivot, p.details.LastID)
+	args := jArgs
+	args = append(args, pivot, pivot, p.details.LastID)
 	args = append(args, wArgs...)
 
 	if p.details.Limit > 0 {
@@ -553,7 +559,8 @@ func (p *Paginator) Counts(dest *int64) error {
 
 	sql := sqlBuilder.String()
 
-	args := append(jArgs, wArgs...)
+	args := jArgs
+	args = append(args, wArgs...)
 	var err error
 	sql, args, err = sqlx.In(sql, args...)
 	if err != nil {
