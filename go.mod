@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/alexliesenfeld/health v0.8.0
 	github.com/docker/docker v27.5.1+incompatible
-	github.com/go-sql-driver/mysql v1.8.1
+	github.com/go-sql-driver/mysql v1.9.0
 	github.com/google/subcommands v1.2.0
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/vault/api v1.16.0
