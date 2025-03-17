@@ -10,7 +10,7 @@ import (
 
 // MustEncode encodes a response as JSON and logs an error if it fails
 func MustEncode[T any](w http.ResponseWriter, status int, v T) {
-	if err := Encode(w, status, v); err != nil {
+	if err := Encode(w, status, v); err != nil { // nolint:revive // This is traditional GO error handling
 		slog.Error("Error encoding response", slog.String(loggingKeyError, err.Error()))
 		return
 	}

@@ -16,3 +16,21 @@ type ErrorMessage struct {
 type Message struct {
 	Message string `json:"message"`
 }
+
+// BadRequest defines the model for bad_request.
+type BadRequest = ErrorMessage
+
+// Conflict defines the model for conflict.
+type Conflict = ErrorMessage
+
+// Forbidden defines the model for forbidden.
+type Forbidden = ErrorMessage
+
+// InternalServerError defines the model for internal_server_error.
+type InternalServerError = ErrorMessage
+
+// NotFound defines the model for not_found.
+type NotFound = ErrorMessage
+
+// Unauthorized defines the model for unauthorized.
+type Unauthorized = ErrorMessage

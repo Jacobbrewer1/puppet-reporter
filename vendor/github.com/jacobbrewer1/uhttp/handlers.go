@@ -34,6 +34,15 @@ func NotFoundHandler() http.HandlerFunc {
 		}
 
 		msg := NewHTTPError(http.StatusNotFound, errNotFound, details...)
+
+		// Is there a request ID in the context?
+		reqId := RequestIDFromContext(r.Context())
+		if reqId != "" {
+			reqId = RequestIDFromContext(GenerateRequestIDToContext(r))
+		}
+
+		msg.RequestId = reqId
+		rw.Header().Set(HeaderRequestID, reqId)
 		MustEncode(rw, http.StatusNotFound, msg)
 	}
 }
@@ -60,6 +69,15 @@ func MethodNotAllowedHandler() http.HandlerFunc {
 		}
 
 		msg := NewHTTPError(http.StatusMethodNotAllowed, errMethodNotAllowed, details)
+
+		// Is there a request ID in the context?
+		reqId := RequestIDFromContext(r.Context())
+		if reqId == "" {
+			reqId = RequestIDFromContext(GenerateRequestIDToContext(r))
+		}
+
+		msg.RequestId = reqId
+		rw.Header().Set(HeaderRequestID, reqId)
 		MustEncode(rw, http.StatusMethodNotAllowed, msg)
 	}
 }
@@ -86,6 +104,15 @@ func UnauthorizedHandler() http.HandlerFunc {
 		}
 
 		msg := NewHTTPError(http.StatusUnauthorized, errUnauthorized, details)
+
+		// Is there a request ID in the context?
+		reqId := RequestIDFromContext(r.Context())
+		if reqId == "" {
+			reqId = RequestIDFromContext(GenerateRequestIDToContext(r))
+		}
+
+		msg.RequestId = reqId
+		rw.Header().Set(HeaderRequestID, reqId)
 		MustEncode(rw, http.StatusUnauthorized, msg)
 	}
 }
@@ -101,5 +128,14 @@ func GenericErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	}
 
 	msg := NewHTTPError(http.StatusBadRequest, err)
+
+	// Is there a request ID in the context?
+	reqId := RequestIDFromContext(r.Context())
+	if reqId == "" {
+		reqId = RequestIDFromContext(GenerateRequestIDToContext(r))
+	}
+
+	msg.RequestId = reqId
+	rw.Header().Set(HeaderRequestID, reqId)
 	MustEncode(rw, http.StatusBadRequest, msg)
 }
