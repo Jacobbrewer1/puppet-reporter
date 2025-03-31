@@ -92,16 +92,17 @@ func (c *ResponseWriter) writeDefaultHeaders() {
 	if c.defaultHeadersWritten {
 		return
 	}
-
 	c.defaultHeadersWritten = true
 
-	if c.defaultHeaders != nil {
-		for header, value := range c.defaultHeaders {
-			if c.Header().Get(header) != "" {
-				// If the header has already been set, do not overwrite it.
-				continue
-			}
-			c.Header().Set(header, value)
+	if c.defaultHeaders == nil {
+		return
+	}
+
+	for header, value := range c.defaultHeaders {
+		if c.Header().Get(header) != "" {
+			// If the header has already been set, do not overwrite it.
+			continue
 		}
+		c.Header().Set(header, value)
 	}
 }
