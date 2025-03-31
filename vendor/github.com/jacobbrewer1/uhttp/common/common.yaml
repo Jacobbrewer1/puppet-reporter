@@ -56,3 +56,41 @@ components:
         request_id:
           type: string
           example: '123456'
+
+  responses:
+    not_found:
+      description: 'Resource not found'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error_message'
+    bad_request:
+      description: 'Bad request'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error_message'
+    internal_server_error:
+      description: 'Internal server error'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error_message'
+    unauthorized:
+      description: 'Unauthorized'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error_message'
+    forbidden:
+      description: 'Forbidden'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error_message'
+    conflict:
+      description: 'Conflict'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error_message'
